@@ -250,4 +250,136 @@ public class TextToVoice {
         System.out.println("Voice bytes length: " + voiceBytes.length);
     }
 }
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+import com.sun.speech.freetts.audio.AudioPlayer;
+import com.sun.speech.freetts.audio.JavaStreamingAudioPlayer;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+             AudioPlayer audioPlayer = new JavaStreamingAudioPlayer(audioFormat, out)) {
+            voice.setAudioPlayer(audioPlayer);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+            voice.deallocate();
+            audioPlayer.close();
+            voiceBytes = out.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+import com.sun.speech.freetts.audio.AudioPlayer;
+import com.sun.speech.freetts.audio.JavaStreamingAudioPlayer;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+             AudioPlayer audioPlayer = new JavaStreamingAudioPlayer(audioFormat, out)) {
+            voice.setAudioPlayer(audioPlayer);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+            voice.deallocate();
+            audioPlayer.close();
+            voiceBytes = out.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+import com.sun.speech.freetts.audio.AudioPlayer;
+import com.sun.speech.freetts.audio.JavaStreamingAudioPlayer;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+             AudioPlayer audioPlayer = new JavaStreamingAudioPlayer(audioFormat, out)) {
+            voice.setAudioPlayer(audioPlayer);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+            voice.deallocate();
+            audioPlayer.close();
+            voiceBytes = out.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}
+
 
