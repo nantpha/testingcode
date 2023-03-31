@@ -194,4 +194,60 @@ public class TextToSpeech {
 }
 
 
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.TargetDataLine;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.Mixer;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.sound.sampled.AudioSystem;
+
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try {
+            // Create a temporary file to store the voice data
+            AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
+            java.io.File tempFile = java.io.File.createTempFile("voice", "." + fileType.getExtension());
+
+            // Synthesize the text to speech and save it to the temporary file
+            voice.setAudioFileFormat(fileType);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+
+            // Read the voice data from the temporary file
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(tempFile);
+            voiceBytes = new byte[(int)(audioInputStream.getFrameLength() * audioFormat.getFrameSize())];
+            audioInputStream.read(voiceBytes);
+            audioInputStream.close();
+            tempFile.delete();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}
 
