@@ -1,5 +1,68 @@
 jdj     
 
+
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.List;
+
+// Assuming you have autowired the AmazonS3 client
+
+public class S3MultipartDownloadExample {
+
+    public void downloadObject(String bucketName, String objectKey, String localFilePath, long partSize) {
+        try {
+            // Get the object metadata to determine the content length
+            ObjectMetadata objectMetadata = amazonS3.getObjectMetadata(bucketName, objectKey);
+            long contentLength = objectMetadata.getContentLength();
+
+            long bytesDownloaded = 0;
+            int partNumber = 1;
+
+            FileOutputStream fos = new FileOutputStream(new File(localFilePath));
+
+            while (bytesDownloaded < contentLength) {
+                long partSizeToDownload = Math.min(partSize, (contentLength - bytesDownloaded));
+                GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey)
+                        .withRange(bytesDownloaded, bytesDownloaded + partSizeToDownload - 1);
+
+                S3Object s3Object = amazonS3.getObject(getObjectRequest);
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+
+                while ((bytesRead = s3Object.getObjectContent().read(buffer)) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                }
+
+                s3Object.getObjectContent().close();
+                bytesDownloaded += partSizeToDownload;
+                partNumber++;
+            }
+
+            fos.close();
+
+        } catch (AmazonServiceException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (AmazonClientException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (IOException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
