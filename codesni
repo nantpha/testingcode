@@ -1,5 +1,71 @@
 
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+        int totalChunks = (int) Math.ceil(objectList.size() / (double) CHUNK_SIZE);
+
+        WebClient webClient = WebClient.create();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(totalChunks);
+
+        List<CompletableFuture<List<Boolean>>> futures = new ArrayList<>();
+
+        for (int i = 0; i < totalChunks; i++) {
+            int startIndex = i * CHUNK_SIZE;
+            int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            CompletableFuture<List<Boolean>> future = CompletableFuture.supplyAsync(() -> {
+                List<Boolean> results = new ArrayList<>();
+                for (Object object : chunk) {
+                    // Send object to WebClient and process the response
+                    Object response = sendToWebClient(webClient, object);
+
+                    // Call another method based on the response and collect the status
+                    boolean status = processResponse(response, object);
+                    results.add(status);
+                }
+                return results;
+            }, executorService);
+
+            futures.add(future);
+        }
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+
+        CompletableFuture<List<Boolean>> combinedFuture = allFutures.thenApply(v -> futures.stream()
+                .flatMap(cf -> cf.join().stream())
+                .collect(Collectors.toList()));
+
+        List<Boolean> allStatus = combinedFuture.join();
+
+        // Perform any further processing with the allStatus list
+
+        executorService.shutdown();
+    }
+
+    private static Object sendToWebClient(WebClient webClient, Object object) {
+        // Code to send object to WebClient and retrieve the response
+        return null; // Replace with your actual logic
+    }
+
+    private static boolean processResponse(Object response, Object object) {
+        // Code to process the response and call another method with the object
+        // Return the status (true or false) based on the response
+        return false; // Replace with your actual logic
+    }
+}
 
 import org.springframework.web.reactive.function.client.WebClient;
 
