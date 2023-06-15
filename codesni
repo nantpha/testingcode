@@ -1,6 +1,32 @@
 jdj     
 
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+
+        ExecutorService executorService = Executors.newFixedThreadPool(objectList.size() / CHUNK_SIZE);
+
+        for (int i = 0; i < objectList.size(); i += CHUNK_SIZE) {
+            final int startIndex = i;
+            final int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            executorService.execute(() -> {
+                // Call your method or perform the required operations for the chunk of objects
+                // You can access the chunk of objects through the 'chunk' variable
+            });
+        }
+
+        executorService.shutdown();
+    }
+}
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
