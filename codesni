@@ -1,5 +1,70 @@
 
 
+
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+        int totalChunks = (int) Math.ceil(objectList.size() / (double) CHUNK_SIZE);
+
+        WebClient webClient = WebClient.create();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(totalChunks);
+
+        List<CompletableFuture<List<Object>>> futures = new ArrayList<>();
+
+        for (int i = 0; i < totalChunks; i++) {
+            int startIndex = i * CHUNK_SIZE;
+            int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            CompletableFuture<List<Object>> future = CompletableFuture.supplyAsync(() -> {
+                // Send chunk to WebClient and process the response
+                List<Object> response = sendToWebClient(webClient, chunk);
+
+                // Call another method based on the response and return the result
+                return processResponse(response);
+            }, executorService);
+
+            futures.add(future);
+        }
+
+        CompletableFuture<List<Object>> combinedFuture = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .reduce((first, second) -> second)
+                        .orElse(new ArrayList<>()));
+
+        List<Object> lastResults = combinedFuture.join();
+
+        // Perform any further processing with the last results
+
+        executorService.shutdown();
+    }
+
+    private static List<Object> sendToWebClient(WebClient webClient, List<Object> chunk) {
+        // Code to send chunk to WebClient and retrieve the response
+        return null; // Replace with your actual logic
+    }
+
+    private static List<Object> processResponse(List<Object> response) {
+        // Code to process the response and return the result
+        return response; // Replace with your actual logic
+    }
+}
+
+
+
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
