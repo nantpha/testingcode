@@ -1,4 +1,44 @@
 
+
+
+import java.util.List;
+
+public class MyClass {
+    public static void main(String[] args) {
+        yourMethod(result -> {
+            if (result != null && !result.isEmpty()) {
+                System.out.println("List obtained: " + result);
+            } else {
+                callMethodAgain();
+            }
+        });
+    }
+
+    public static void yourMethod(ResultCallback callback) {
+        // Implement your method here and invoke the callback with the result when ready
+        List<Integer> result = null; // Replace with your logic to obtain the list
+        callback.onResult(result);
+    }
+
+    public static void callMethodAgain() {
+        yourMethod(result -> {
+            if (result != null && !result.isEmpty()) {
+                System.out.println("List obtained: " + result);
+            } else {
+                callMethodAgain();
+            }
+        });
+    }
+
+    interface ResultCallback {
+        void onResult(List<Integer> result);
+    }
+}
+
+
+
+
+
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
