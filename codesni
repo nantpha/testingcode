@@ -1,4 +1,49 @@
 
+
+import net.javacrumbs.shedlock.core.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class MyClass {
+
+    @Scheduled(cron = "0 0 0 * * ?") // Schedule the task using Spring's @Scheduled annotation
+    @SchedulerLock(name = "myTaskName") // Apply ShedLock to ensure exclusive execution
+    public void scheduledTask() {
+        CompletableFuture<List<Integer>> future = CompletableFuture.supplyAsync(this::yourMethod);
+        CompletableFuture<List<Integer>> nonEmptyListFuture = future.thenComposeAsync(result -> {
+            if (result == null || result.isEmpty()) {
+                return CompletableFuture.supplyAsync(this::yourMethod);
+            }
+            return CompletableFuture.completedFuture(result);
+        });
+
+        try {
+            List<Integer> result = nonEmptyListFuture.get();
+            System.out.println("List obtained: " + result);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Integer> yourMethod() {
+        // Implement your method here and return a list when ready
+        return null; // Replace with your logic to return the list
+    }
+}
+
+
+
+
+
+
+ hehehje
+
+
+
+
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
