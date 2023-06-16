@@ -1,5 +1,31 @@
 
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
+public class MyClass {
+    public static void main(String[] args) {
+        CompletableFuture<List<Integer>> future = CompletableFuture.supplyAsync(MyClass::yourMethod);
+        CompletableFuture<List<Integer>> nonEmptyListFuture = future.thenComposeAsync(result -> {
+            if (result == null || result.isEmpty()) {
+                return CompletableFuture.supplyAsync(MyClass::yourMethod);
+            }
+            return CompletableFuture.completedFuture(result);
+        });
+
+        try {
+            List<Integer> result = nonEmptyListFuture.get();
+            System.out.println("List obtained: " + result);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static List<Integer> yourMethod() {
+        // Implement your method here and return a list when ready
+        return null; // Replace with your logic to return the list
+    }
+}
 
 import java.util.List;
 
