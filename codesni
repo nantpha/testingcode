@@ -1,5 +1,122 @@
 
 
+
+
+
+
+
+
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.RetryPolicy;
+import org.springframework.retry.context.RetryContextSupport;
+
+public class CustomRetryCondition implements RetryPolicy {
+
+    private int maxAttempts;
+    private Class<? extends Throwable> errorCondition;
+
+    public CustomRetryCondition(int maxAttempts, Class<? extends Throwable> errorCondition) {
+        this.maxAttempts = maxAttempts;
+        this.errorCondition = errorCondition;
+    }
+
+    @Override
+    public boolean canRetry(RetryContext context) {
+        Throwable lastThrowable = context.getLastThrowable();
+        return lastThrowable != null && errorCondition.isAssignableFrom(lastThrowable.getClass());
+    }
+
+    @Override
+    public RetryContext open(RetryContext parent) {
+        return new RetryContextSupport(parent);
+    }
+
+    @Override
+    public void close(RetryContext context) {
+        // No-op
+    }
+
+    @Override
+    public void registerThrowable(RetryContext context, Throwable throwable) {
+        // No-op
+    }
+
+    @Override
+    public RetryContext getContext() {
+        return RetryContextSupport.currentRetryContext();
+    }
+}
+
+
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+
+    @Retryable(retryPolicy = "customRetryPolicy")
+    public void myMethod() {
+        // Logic of your method goes here
+        // If an exception occurs matching the error condition, the method will be retried
+    }
+}
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.RetryPolicy;
+
+@Configuration
+public class RetryConfiguration {
+
+    @Bean(name = "customRetryPolicy")
+    public RetryPolicy customRetryPolicy() {
+        int maxAttempts = 3;
+        Class<? extends Throwable> errorCondition = MyCustomException.class;
+        return new CustomRetryCondition(maxAttempts, errorCondition);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import net.javacrumbs.shedlock.core.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 
