@@ -1,9 +1,9 @@
 
 
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class RetryExample {
@@ -13,13 +13,16 @@ public class RetryExample {
     public static void main(String[] args) {
         CompletableFuture<List<Object>> resultFuture = retryMethodCall();
 
-        resultFuture.thenAccept(resultList -> {
+        try {
+            List<Object> resultList = resultFuture.get();
             if (resultList == null || resultList.isEmpty()) {
                 System.out.println("Retry attempts exhausted. Unable to retrieve results.");
             } else {
                 System.out.println("Results: " + resultList);
             }
-        });
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
 
         // Prevent the main thread from exiting immediately
         try {
@@ -32,7 +35,21 @@ public class RetryExample {
     private static CompletableFuture<List<Object>> retryMethodCall() {
         CompletableFuture<List<Object>> resultFuture = new CompletableFuture<>();
 
-        retryMethodCallHelper(resultFuture, 0);
+        callMethod().thenComposeAsync(resultList -> {
+            if (resultList == null || resultList.isEmpty()) {
+                // Retry logic
+                CompletableFuture<List<Object>> retryFuture = new CompletableFuture<>();
+                retryMethodCallHelper(retryFuture, 1);
+                return retryFuture;
+            } else {
+                resultFuture.complete(resultList);
+                return CompletableFuture.completedFuture(resultList);
+            }
+        }).whenComplete((result, throwable) -> {
+            if (throwable != null) {
+                resultFuture.completeExceptionally(throwable);
+            }
+        });
 
         return resultFuture;
     }
@@ -43,7 +60,7 @@ public class RetryExample {
             return;
         }
 
-        callMethod().thenAccept(resultList -> {
+        callMethod().thenComposeAsync(resultList -> {
             if (resultList == null || resultList.isEmpty()) {
                 try {
                     Thread.sleep(RETRY_DELAY_MS);
@@ -54,6 +71,7 @@ public class RetryExample {
             } else {
                 resultFuture.complete(resultList);
             }
+            return CompletableFuture.completedFuture(resultList);
         });
     }
 
@@ -71,6 +89,7 @@ public class RetryExample {
         return future;
     }
 }
+
 
 
 
