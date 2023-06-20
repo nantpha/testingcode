@@ -1,6 +1,76 @@
 
 
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+public class RetryExample {
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 1000;
+
+    public static void main(String[] args) {
+        CompletableFuture<List<Object>> resultFuture = retryMethodCall();
+
+        resultFuture.thenAccept(resultList -> {
+            if (resultList == null || resultList.isEmpty()) {
+                System.out.println("Retry attempts exhausted. Unable to retrieve results.");
+            } else {
+                System.out.println("Results: " + resultList);
+            }
+        });
+
+        // Prevent the main thread from exiting immediately
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static CompletableFuture<List<Object>> retryMethodCall() {
+        CompletableFuture<List<Object>> resultFuture = new CompletableFuture<>();
+
+        retryMethodCallHelper(resultFuture, 0);
+
+        return resultFuture;
+    }
+
+    private static void retryMethodCallHelper(CompletableFuture<List<Object>> resultFuture, int retryCount) {
+        if (retryCount >= MAX_RETRY_ATTEMPTS) {
+            resultFuture.complete(new ArrayList<>()); // Empty result to indicate retries exhausted
+            return;
+        }
+
+        callMethod().thenAccept(resultList -> {
+            if (resultList == null || resultList.isEmpty()) {
+                try {
+                    Thread.sleep(RETRY_DELAY_MS);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                retryMethodCallHelper(resultFuture, retryCount + 1);
+            } else {
+                resultFuture.complete(resultList);
+            }
+        });
+    }
+
+    private static CompletableFuture<List<Object>> callMethod() {
+        // Simulating the asynchronous method call
+        CompletableFuture<List<Object>> future = new CompletableFuture<>();
+        // Replace this with your actual method implementation
+
+        // In this example, we complete the future with an empty list
+        // to simulate an empty result
+        future.complete(new ArrayList<>());
+        // In your actual implementation, you would perform the asynchronous operation
+        // and complete the future with the appropriate result
+
+        return future;
+    }
+}
 
 
 
