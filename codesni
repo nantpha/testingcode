@@ -1,5 +1,38 @@
 
 
+// Define a callback interface
+interface ResponseCallback {
+    void onResponse(String response);
+}
+
+// Define a class that performs an asynchronous operation
+class DataFetcher {
+    void fetchData(ResponseCallback callback) {
+        // Simulating an asynchronous operation
+        new Thread(() -> {
+            // Simulating a delay
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            String data = "Data received";
+            callback.onResponse(data); // Call the callback with the response
+        }).start();
+    }
+}
+
+// Create an instance of DataFetcher and call the method with a lambda expression
+DataFetcher dataFetcher = new DataFetcher();
+dataFetcher.fetchData(response -> {
+    // Handle the response here
+    System.out.println("Received response: " + response);
+    // You can call another method or perform additional actions based on the response
+});
+
+m
+
 import java.util.concurrent.CompletableFuture;
 
 class DataFetcher {
