@@ -1,5 +1,47 @@
 
 
+import java.util.concurrent.CompletableFuture;
+
+class DataFetcher {
+    CompletableFuture<String> fetchData() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        
+        // Simulating an asynchronous operation
+        new Thread(() -> {
+            // Simulating a delay
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            String data = "Data received";
+            future.complete(data); // Complete the CompletableFuture with the response
+        }).start();
+        
+        return future;
+    }
+}
+
+// Create an instance of DataFetcher and call the method
+DataFetcher dataFetcher = new DataFetcher();
+CompletableFuture<String> future = dataFetcher.fetchData();
+
+// Register a callback when the CompletableFuture completes
+future.thenAccept(response -> {
+    // Handle the response here
+    System.out.println("Received response: " + response);
+    // You can call another method or perform additional actions based on the response
+});
+
+// Perform other actions while waiting for the CompletableFuture to complete
+System.out.println("Performing other tasks...");
+
+// Wait for the CompletableFuture to complete (optional)
+future.join();
+
+
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
