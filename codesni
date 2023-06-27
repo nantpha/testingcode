@@ -1,3 +1,48 @@
+public class Main {
+    public static void main(String[] args) {
+        List<Integer> recordsList = new ArrayList<>();
+
+        // Example list of 250 records
+        for (int i = 1; i <= 250; i++) {
+            recordsList.add(i);
+        }
+
+        // Create chunks of 100 records
+        List<List<Integer>> chunks = new ArrayList<>();
+        for (int i = 0; i < recordsList.size(); i += 100) {
+            chunks.add(recordsList.subList(i, Math.min(i + 100, recordsList.size())));
+        }
+
+        // Iterate over chunks and call method with 10 records
+        for (List<Integer> chunk : chunks) {
+            for (int i = 0; i < chunk.size(); i += 10) {
+                List<Integer> records = chunk.subList(i, Math.min(i + 10, chunk.size()));
+                callMethod(records);
+            }
+        }
+    }
+
+    public static void callMethod(List<Integer> records) {
+        // Your method implementation goes here
+        System.out.println("Calling method with " + records.size() + " records");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Define a callback interface
