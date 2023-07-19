@@ -1,5 +1,55 @@
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
+public class IISConnectionExample {
+    public static void main(String[] args) {
+        try {
+            String serverUrl = "http://your-iis-server.com"; // Replace with the actual IIS server URL
+            String username = "your-username"; // Replace with your username
+            String password = "your-password"; // Replace with your password
+            
+            String credentials = username + ":" + password;
+            byte[] encodedCredentials = Base64.getEncoder().encode(credentials.getBytes(StandardCharsets.UTF_8));
+            String authHeaderValue = "Basic " + new String(encodedCredentials, StandardCharsets.UTF_8);
+            
+            URL url = new URL(serverUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            
+            // Set authentication header
+            connection.setRequestProperty("Authorization", authHeaderValue);
+            
+            // Optional: Set request method, headers, timeouts, etc.
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String line;
+                StringBuilder response = new StringBuilder();
+                
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+                
+                System.out.println("Response: " + response.toString());
+            } else {
+                System.out.println("Connection failed. Response Code: " + responseCode);
+            }
+            
+            connection.disconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
 
 Sure! Here are a few quotes about hard work:
 
