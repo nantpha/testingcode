@@ -1,5 +1,74 @@
 
 
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/example")
+public class TeeServlet extends HttpServlet {
+    private FileOutputStream fileOutputStream;
+
+    @Override
+    public void init() throws ServletException {
+        try {
+            // Create the output stream to the file (for logging or other processing)
+            fileOutputStream = new FileOutputStream("output.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Create the response output stream
+            ServletOutputStream responseOutputStream = response.getOutputStream();
+
+            // Create a custom output stream that duplicates the incoming bytes
+            TeeOutputStream teeOutputStream = new TeeOutputStream(responseOutputStream, fileOutputStream);
+
+            // Pass the custom output stream to other methods or perform further processing
+            processDataStream(teeOutputStream);
+
+            // Remember to flush and close the output streams
+            fileOutputStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processDataStream(OutputStream outputStream) throws IOException {
+        // This method will receive the data stream in real-time
+        // Perform further processing or pass the stream to other methods as needed
+
+        // Your continuous stream reading logic goes here, writing to the outputStream
+        // For example:
+        // InputStream inputStream = someMethodToGetInputStream();
+        // byte[] buffer = new byte[4096];
+        // int bytesRead;
+        // while ((bytesRead = inputStream.read(buffer)) != -1) {
+        //     outputStream.write(buffer, 0, bytesRead);
+        // }
+    }
+
+    @Override
+    public void destroy() {
+        // Remember to close the file output stream when the servlet is destroyed
+        try {
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
 import java.io.*;
 import javax.servlet.*;
 import javax.servlet.annotation.WebServlet;
