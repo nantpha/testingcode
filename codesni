@@ -1,4 +1,84 @@
 
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/voice")
+public class VoiceServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Create the output stream to the file (for logging or other processing)
+            FileOutputStream fileOutputStream = new FileOutputStream("voice_log.raw");
+
+            // Create the response output stream
+            ServletOutputStream responseOutputStream = response.getOutputStream();
+
+            // Create the TeeOutputStream by providing both streams
+            TeeOutputStream tee = new TeeOutputStream(responseOutputStream, fileOutputStream);
+
+            // Create a custom input stream that duplicates the incoming voice bytes
+            VoiceInputStream voiceInputStream = new VoiceInputStream(request.getInputStream(), tee);
+
+            // Start processing voice data in real-time without holding it in memory
+            processVoiceStream(voiceInputStream);
+
+            // Remember to close the output streams
+            fileOutputStream.flush();
+            fileOutputStream.close();
+            responseOutputStream.flush();
+            responseOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processVoiceStream(VoiceInputStream voiceInputStream) throws IOException {
+        // Process the voice data in real-time without holding it in memory
+        int byteData;
+        while ((byteData = voiceInputStream.read()) != -1) {
+            // Your custom logic for real-time processing of voice data goes here
+            // For example, you could analyze the voice data, store it in a database, etc.
+            // You can also pass the byteData to other methods or APIs for further processing
+            // Your custom logic goes here
+        }
+    }
+
+    private static class VoiceInputStream extends ServletInputStream {
+        private final InputStream inputStream;
+        private final OutputStream outputStream;
+
+        VoiceInputStream(InputStream inputStream, OutputStream outputStream) {
+            this.inputStream = inputStream;
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int byteData = inputStream.read();
+            if (byteData != -1) {
+                outputStream.write(byteData);
+            }
+            return byteData;
+        }
+
+        // Override other read methods as needed
+
+        @Override
+        public void close() throws IOException {
+            inputStream.close();
+            outputStream.close();
+        }
+    }
+}
+
+
+
+
+
+
 import java.io.*;
 import javax.servlet.*;
 import javax.servlet.annotation.WebServlet;
