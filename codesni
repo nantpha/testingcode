@@ -1,4 +1,60 @@
 
+
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/example")
+public class TeeServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Create the output stream to the file
+            FileOutputStream fileOutputStream = new FileOutputStream("output.txt");
+
+            // Create the response output stream
+            ServletOutputStream responseOutputStream = response.getOutputStream();
+
+            // Create the TeeOutputStream by providing both streams
+            TeeOutputStream tee = new TeeOutputStream(fileOutputStream, responseOutputStream);
+
+            // Wrap the TeeOutputStream in a custom ServletOutputStream
+            ServletOutputStream customOutputStream = new ServletOutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    tee.write(b);
+                    // You can perform additional operations here with the byte (b) received from the request
+                    // For example, you could pass it to other methods or process it further
+                    // Your custom logic goes here
+                }
+            };
+
+            // Set the custom output stream as the response output stream
+            response.setOutputStream(customOutputStream);
+
+            // Read bytes from the request and distribute them using the TeeOutputStream
+            InputStream requestInputStream = request.getInputStream();
+            int byteData;
+            while ((byteData = requestInputStream.read()) != -1) {
+                customOutputStream.write(byteData);
+            }
+
+            // Remember to flush and close the output streams
+            customOutputStream.flush();
+            fileOutputStream.flush();
+            customOutputStream.close();
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
