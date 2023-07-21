@@ -1,5 +1,70 @@
 
 
+import org.springframework.web.reactive.function.client.WebClient;
+
+// ... other imports and setup ...
+
+public class DataProcessor {
+    private WebClient webClient;
+    private FileOutputStream fileOutputStream;
+
+    public DataProcessor() {
+        // Initialize WebClient with the base URL of the external API or service
+        this.webClient = WebClient.create("https://api.example.com");
+
+        try {
+            // Create the output stream to the file (for logging or other processing)
+            fileOutputStream = new FileOutputStream("output.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void processData(InputStream inputStream) {
+        // Create a custom output stream that duplicates the incoming bytes
+        TeeOutputStream teeOutputStream = new TeeOutputStream(webClientToOutputStream(), fileOutputStream);
+
+        // Your continuous stream reading logic goes here, writing to the teeOutputStream
+        // For example:
+        // byte[] buffer = new byte[4096];
+        // int bytesRead;
+        // while ((bytesRead = inputStream.read(buffer)) != -1) {
+        //     teeOutputStream.write(buffer, 0, bytesRead);
+        // }
+    }
+
+    private OutputStream webClientToOutputStream() {
+        // Implement a custom OutputStream that sends the incoming bytes to WebClient
+        // Here, you can use WebClient to make non-blocking HTTP requests
+        return new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                // Convert the incoming bytes to the format required by the external API
+                // For example, append the byte to a buffer and send when a specific delimiter is reached
+                // webClient.post() or webClient.put() or any other method to send the data
+            }
+
+            // Implement other write methods as needed for better performance
+
+            @Override
+            public void close() throws IOException {
+                // Complete the HTTP request when the stream is closed
+                // You can also handle errors and handle the response here if needed
+            }
+        };
+    }
+
+    public void shutdown() {
+        // Remember to close the file output stream when the processing is done
+        try {
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
 
 import java.io.*;
 import javax.servlet.*;
