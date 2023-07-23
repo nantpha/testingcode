@@ -1,3 +1,200 @@
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class GrpcClient {
+    public static void main(String[] args) throws IOException {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+                .usePlaintext()
+                .build();
+
+        GrpcServiceGrpc.GrpcServiceStub stub = GrpcServiceGrpc.newStub(channel);
+
+        PipedInputStream pipedInputStream = new PipedInputStream();
+        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        CompletableFuture<Void> localProcessingFuture = CompletableFuture.runAsync(() -> {
+            try {
+                processLocalData(pipedInputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, executorService);
+
+        CompletableFuture<Void> sendDataToOtherApplicationFuture = CompletableFuture.runAsync(() -> {
+            try {
+                sendDataToOtherApplication(pipedOutputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, executorService);
+
+        // Read from the gRPC stream and write to the PipedOutputStream
+        CompletableFuture<Void> grpcFuture = CompletableFuture.runAsync(() -> {
+            try {
+                stub.getData(Request.newBuilder().build()).writeTo(pipedOutputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, executorService);
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(localProcessingFuture, sendDataToOtherApplicationFuture, grpcFuture);
+        allFutures.join();
+
+        // Close the channel and executor service properly after processing
+        channel.shutdown();
+        executorService.shutdown();
+    }
+
+    private static void processLocalData(PipedInputStream inputStream) throws IOException {
+        // Implement your local data processing logic here
+        // For example, you can read from the PipedInputStream and process the data
+        // without storing it in memory
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            // Process the data without storing it
+            // ...
+        }
+    }
+
+    private static void sendDataToOtherApplication(PipedOutputStream outputStream) throws IOException {
+        // Implement sending logic to the other application
+        // For example, you can read from the PipedOutputStream and send the data
+        // without storing it in memory
+    }
+}
+
+
+
+import java.io.IOException;
+import java.io.OutputStream;
+
+public class TeeOutputStream extends OutputStream {
+    private final OutputStream outputStream1;
+    private final OutputStream outputStream2;
+
+    public TeeOutputStream(OutputStream outputStream1, OutputStream outputStream2) {
+        this.outputStream1 = outputStream1;
+        this.outputStream2 = outputStream2;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+        outputStream1.write(b);
+        outputStream2.write(b);
+    }
+
+    @Override
+    public void write(byte[] b) throws IOException {
+        outputStream1.write(b);
+        outputStream2.write(b);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+        outputStream1.write(b, off, len);
+        outputStream2.write(b, off, len);
+    }
+
+    @Override
+    public void flush() throws IOException {
+        outputStream1.flush();
+        outputStream2.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            outputStream1.close();
+        } finally {
+            outputStream2.close();
+        }
+    }
+}
+
+
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class GrpcClient {
+    public static void main(String[] args) throws IOException {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+                .usePlaintext()
+                .build();
+
+        GrpcServiceGrpc.GrpcServiceStub stub = GrpcServiceGrpc.newStub(channel);
+
+        PipedInputStream pipedInputStream = new PipedInputStream();
+        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+
+        // Thread to read from gRPC stream and write to PipedOutputStream
+        executorService.execute(() -> {
+            stub.getData(Request.newBuilder().build(), new StreamObserver<Response>() {
+                @Override
+                public void onNext(Response response) {
+                    try {
+                        response.getData().writeTo(pipedOutputStream);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    t.printStackTrace();
+                }
+
+                @Override
+                public void onCompleted() {
+                    try {
+                        pipedOutputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        });
+
+        // Thread to read from PipedInputStream and process data
+        executorService.execute(() -> {
+            try {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = pipedInputStream.read(buffer)) != -1) {
+                    // Process data locally
+                    // ...
+
+                    // Send data to the other application
+                    sendDataToOtherApplication(buffer, bytesRead);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    // Method to send data to the other application
+    private static void sendDataToOtherApplication(byte[] data, int length) {
+        // Implement sending logic to the other application
+        // ...
+    }
+}
 
 
 import org.springframework.web.reactive.function.client.WebClient;
