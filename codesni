@@ -1,3 +1,69 @@
+
+
+import org.apache.commons.io.input.TeeInputStream;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
+
+public class TeeInputStreamExample {
+    public static void main(String[] args) {
+        // Sample byte array (replace this with your actual byte array from the method parameter)
+        byte[] bytes = "Hello, this is a sample byte array.".getBytes();
+
+        // Create an input stream from the byte array
+        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+
+            // Create two output streams (e.g., methodAOutputStream and methodBOutputStream)
+            // Here, we are just using System.out to represent methodAOutputStream and methodBOutputStream.
+            // You should replace System.out with your actual method-specific output streams.
+            // For example, you could use FileOutputStream to write to files, etc.
+            TeeInputStream teeInputStream = new TeeInputStream(inputStream, System.out);
+
+            // Now, you can pass the teeInputStream to the methods that require the bytes.
+            methodA(teeInputStream);
+            methodB(teeInputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it.
+    public static void methodA(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Do something with the bytes, e.g., process them in some way.
+                // Here, we're just printing them for demonstration purposes.
+                System.out.println("Method A: " + new String(buffer, 0, bytesRead));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Another sample method that receives an input stream and reads bytes from it.
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Do something else with the bytes, e.g., process them in a different way.
+                // Here, we're just printing them for demonstration purposes.
+                System.out.println("Method B: " + Arrays.toString(Arrays.copyOfRange(buffer, 0, bytesRead)));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.io.IOException;
