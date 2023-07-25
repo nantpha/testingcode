@@ -1,5 +1,72 @@
 
+import org.apache.commons.io.output.TeeOutputStream;
 
+import java.io.*;
+import java.util.Arrays;
+
+public class OutputStreamDistributionExample {
+    public static void main(String[] args) {
+        // Sample byte array (replace this with your actual byte array from the method parameter)
+        byte[] bytes = "Hello, this is a sample byte array.".getBytes();
+
+        // Create an input stream from the byte array
+        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+            // Create an output stream to save the data to a file
+            FileOutputStream fileOutputStream = new FileOutputStream("output.txt");
+
+            // Create a ByteArrayOutputStream to store the data in memory
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+            // Use TeeOutputStream to split the data into fileOutputStream and byteArrayOutputStream
+            TeeOutputStream teeOutputStream = new TeeOutputStream(fileOutputStream, byteArrayOutputStream);
+
+            // Pass the teeOutputStream to methodA to save the data to the file
+            methodA(inputStream, teeOutputStream);
+
+            // Pass the byteArrayOutputStream to methodB to pass the data to Angular UI
+            methodB(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and writes the bytes to an output stream (e.g., file)
+    public static void methodA(InputStream inputStream, OutputStream outputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Write the bytes to the output stream (e.g., fileOutputStream)
+                outputStream.write(buffer, 0, bytesRead);
+            }
+
+            // Don't forget to close the output stream
+            outputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it (e.g., for passing to Angular UI)
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Do something with the bytes, e.g., send them to Angular UI.
+                // Here, we're just printing them for demonstration purposes.
+                System.out.println("Method B: " + Arrays.toString(Arrays.copyOfRange(buffer, 0, bytesRead)));
+            }
+
+            // Don't forget to close the input stream
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
 import org.apache.commons.io.input.TeeInputStream;
 
 import java.io.ByteArrayInputStream;
