@@ -1,4 +1,70 @@
 
+
+
+
+import org.apache.commons.io.output.TeeOutputStream;
+import java.io.*;
+import java.util.Arrays;
+
+public class MainClass {
+    public static void main(String[] args) {
+        // Sample byte array received from an external source (replace this with your actual byte array)
+        byte[] bytesFromExternalSource = "Hello, this is data from an external source.".getBytes();
+
+        // Create a custom implementation of SharedDataHolder to hold the shared data
+        SharedDataHolderImpl sharedDataHolder = new SharedDataHolderImpl();
+
+        // Pass the sharedDataHolder to methodA and methodB using TeeOutputStream
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             TeeOutputStream teeOutputStream = new TeeOutputStream(System.out, byteArrayOutputStream, sharedDataHolder)) {
+            // Use the teeOutputStream to write bytes received from the external source
+            teeOutputStream.write(bytesFromExternalSource);
+            // Don't forget to flush the streams
+            teeOutputStream.flush();
+            // Now, the data is available through the sharedDataHolder interface
+            methodB(new ByteArrayInputStream(sharedDataHolder.getSharedData()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it (e.g., for processing)
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Convert the bytes to a string and print it
+                String data = new String(buffer, 0, bytesRead);
+                System.out.println("Method B: " + data);
+            }
+
+            // Don't forget to close the input stream
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Custom implementation of SharedDataHolder to hold the shared data
+    static class SharedDataHolderImpl implements SharedDataHolder {
+        private byte[] sharedData;
+
+        @Override
+        public void setSharedData(byte[] data) {
+            this.sharedData = data;
+        }
+
+        // Interface method to get the shared data
+        public byte[] getSharedData() {
+            return sharedData;
+        }
+    }
+}
+
+
+
 import org.apache.commons.io.output.TeeOutputStream;
 
 import java.io.*;
