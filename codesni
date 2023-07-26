@@ -1,4 +1,31 @@
+import org.apache.commons.io.output.TeeOutputStream;
 
+import java.io.*;
+
+public class CustomTeeOutputStream extends TeeOutputStream implements SharedDataHolder {
+    private ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+    public CustomTeeOutputStream(OutputStream out1, OutputStream out2) {
+        super(out1, out2);
+    }
+
+    @Override
+    public void processData(InputStream inputStream) throws IOException {
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            // Write the bytes to both the underlying TeeOutputStream and the ByteArrayOutputStream
+            super.write(buffer, 0, bytesRead);
+            byteArrayOutputStream.write(buffer, 0, bytesRead);
+        }
+    }
+
+    @Override
+    public byte[] getSharedData() {
+        return byteArrayOutputStream.toByteArray();
+    }
+}
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
