@@ -1,11 +1,17 @@
-Random random = new Random();
+int length = 10; // Specify the length of the random string
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder randomString = new StringBuilder();
 
-        // Generate a random integer between 0 (inclusive) and 100 (exclusive)
-        int randomInt = random.nextInt(100);
-        System.out.println("Random Integer: " + randomInt);
+        Random random = new Random();
 
-        // Generate a random double between 0.0 (inclusive) and 1.0 (exclusive)
-        double randomDouble = random.nextDouble();
+        for (int i = 0; i < length; i++) {
+            int randomIndex = random.nextInt(characters.length());
+            char randomChar = characters.charAt(randomIndex);
+            randomString.append(randomChar);
+        }
+
+        System.out.println("Random String: " + randomString.toString());
+    }
 
 
 
