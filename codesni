@@ -1,3 +1,13 @@
+Random random = new Random();
+
+        // Generate a random integer between 0 (inclusive) and 100 (exclusive)
+        int randomInt = random.nextInt(100);
+        System.out.println("Random Integer: " + randomInt);
+
+        // Generate a random double between 0.0 (inclusive) and 1.0 (exclusive)
+        double randomDouble = random.nextDouble();
+
+
 
 existingWebClient.mutate()
         .filter((request, next) -> {
