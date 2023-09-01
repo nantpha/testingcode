@@ -1,3 +1,18 @@
+
+existingWebClient.mutate()
+        .filter((request, next) -> {
+            logRequest(request);
+            return next.exchange(request)
+                    .doOnNext(response -> logResponse(response))
+                    .onErrorResume(throwable -> {
+                        logError(throwable);
+                        return Mono.error(throwable);
+                    });
+        })
+        .build()
+
+
+
 import org.apache.commons.io.output.TeeOutputStream;
 
 import java.io.*;
