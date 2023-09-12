@@ -1,4 +1,24 @@
+public class CopyUtil {
+    @SuppressWarnings("unchecked")
+    public static <T> T copyObject(T original) throws IOException, ClassNotFoundException {
+        if (original == null) {
+            return null;
+        }
 
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(original);
+        oos.flush();
+        oos.close();
+
+        byte[] objectBytes = bos.toByteArray();
+
+        ByteArrayInputStream bis = new ByteArrayInputStream(objectBytes);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+
+        return (T) ois.readObject();
+    }
+} 
 
 Certainly, if you want to acknowledge a remarkable contribution, you can say something like:
 
