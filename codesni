@@ -1,3 +1,35 @@
+
+import java.util.Random;
+
+public class RandomCodeGenerator {
+    public static void main(String[] args) {
+        // Define characters for letters
+        String letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        // Create a Random object
+        Random random = new Random();
+
+        // Generate the first 5 digits
+        StringBuilder code = new StringBuilder();
+        for (int i = 0; i < 5; i++) {
+            int digit = random.nextInt(10);
+            code.append(digit);
+        }
+
+        // Generate 5 random letters
+        for (int i = 0; i < 5; i++) {
+            int letterIndex = random.nextInt(letters.length());
+            char letter = letters.charAt(letterIndex);
+            code.append(letter);
+        }
+
+        // Print the generated code
+        System.out.println("Generated Code: " + code.toString());
+    }
+}
+
+
+
 public class CopyUtil {
     @SuppressWarnings("unchecked")
     public static <T> T copyObject(T original) throws IOException, ClassNotFoundException {
