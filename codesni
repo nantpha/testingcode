@@ -1,4 +1,22 @@
 
+
+import java.util.regex.*;
+
+String s = "This is a \"quoted\" string";
+
+Pattern pattern = Pattern.compile("\"([^\"]*)\"");
+Matcher matcher = pattern.matcher(s);
+
+if (matcher.find()) {
+    String extractedValue = matcher.group(1);
+    System.out.println("Value inside quotes: " + extractedValue);
+} else {
+    System.out.println("No quoted value found in the string.");
+}
+
+
+
+
 import java.util.Random;
 
 public class RandomCodeGenerator {
