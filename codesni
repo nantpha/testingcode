@@ -1,5 +1,24 @@
 
 
+
+String searchString = "your_search_string";
+
+for (File file : files) {
+    if (file.isFile()) {
+        String fileName = file.getName();
+        if (fileName.endsWith(searchString)) {
+            if (file.delete()) {
+                System.out.println("Deleted file: " + file.getAbsolutePath());
+            } else {
+                System.err.println("Failed to delete file: " + file.getAbsolutePath());
+            }
+        }
+    }
+}
+
+
+
+
 import java.util.regex.*;
 
 String s = "This is a \"quoted\" string";
