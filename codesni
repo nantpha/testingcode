@@ -1,5 +1,21 @@
 
+import io.grpc.*;
+import io.grpc.util.Retrying;
 
+ManagedChannel channel = ManagedChannelBuilder.forAddress("your_server_host", your_server_port)
+        .usePlaintext()
+        .build();
+
+MyServiceGrpc.MyServiceBlockingStub blockingStub = MyServiceGrpc.newBlockingStub(channel);
+
+RetryPolicy retryPolicy = RetryPolicy.builder()
+        .maxAttempts(3)
+        .retryOn(Status.Code.UNAVAILABLE)
+        .build();
+
+blockingStub = Retrying.newBuilder(blockingStub)
+        .retrying(retryPolicy)
+        .build
 
 String searchString = "your_search_string";
 
