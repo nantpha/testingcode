@@ -1,5 +1,65 @@
 
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+
+public class BufferedFileAppender {
+    private static final long MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
+    private static final String FILE_NAME = "output.txt";
+
+    private ByteArrayOutputStream byteArrayOutputStream;
+    private FileOutputStream fileOutputStream;
+
+    public BufferedFileAppender() throws IOException {
+        byteArrayOutputStream = new ByteArrayOutputStream();
+        fileOutputStream = new FileOutputStream(FILE_NAME, true); // Open the file in append mode
+    }
+
+    public void writeData(String data) throws IOException {
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+
+        if (byteArrayOutputStream.size() + dataBytes.length >= MAX_BUFFER_SIZE) {
+            flushBufferToFile(); // Flush the buffer to the file when it's full
+        }
+
+        byteArrayOutputStream.write(dataBytes);
+    }
+
+    public void close() throws IOException {
+        flushBufferToFile(); // Ensure any remaining data in the buffer is written
+        fileOutputStream.close();
+    }
+
+    private void flushBufferToFile() throws IOException {
+        if (byteArrayOutputStream.size() > 0) {
+            byteArrayOutputStream.writeTo(fileOutputStream);
+            byteArrayOutputStream.reset(); // Reset the buffer
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            BufferedFileAppender appender = new BufferedFileAppender();
+
+            for (int i = 0; i < 10; i++) {
+                String data = "Data " + i + "\n";
+                appender.writeData(data);
+            }
+
+            appender.close();
+
+            System.out.println("Data has been written to the file.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
