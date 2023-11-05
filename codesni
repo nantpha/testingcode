@@ -1,3 +1,107 @@
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
+
+public class AudioDownloaderWithHeaders {
+    public static void main(String[] args) {
+        List<String> audioUrls = List.of(
+            "http://example.com/audio1.mp3",
+            "http://example.com/audio2.mp3"
+            // Add more URLs as needed
+        );
+
+        String downloadDir = "downloaded_audio";
+
+        // Create the download directory if it doesn't exist
+        File directory = new File(downloadDir);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
+
+        for (String audioUrl : audioUrls) {
+            try {
+                URL url = new URL(audioUrl);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+                // Set custom headers here
+                connection.setRequestProperty("User-Agent", "YourUserAgent");
+                connection.setRequestProperty("Authorization", "Bearer YourAuthToken");
+
+                int responseCode = connection.getResponseCode();
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    String fileName = downloadDir + File.separator + new File(audioUrl).getName();
+
+                    try (InputStream in = connection.getInputStream();
+                         OutputStream out = new FileOutputStream(fileName)) {
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                        System.out.println("Downloaded: " + fileName);
+                    } catch (IOException e) {
+                        System.err.println("Failed to download: " + audioUrl);
+                    }
+                } else {
+                    System.err.println("Failed to download: " + audioUrl);
+                    System.err.println("Response Code: " + responseCode);
+                }
+
+                connection.disconnect();
+            } catch (Exception e) {
+                System.err.println("An error occurred: " + e.getMessage());
+            }
+        }
+    }
+}
+
+import java.io.*;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+
+public class AudioDownloader {
+    public static void main(String[] args) {
+        List<String> audioUrls = new ArrayList<>();
+        audioUrls.add("http://example.com/audio1.mp3");
+        audioUrls.add("http://example.com/audio2.mp3");
+        // Add more URLs as needed
+
+        String downloadDir = "downloaded_audio";
+
+        // Create the download directory if it doesn't exist
+        File directory = new File(downloadDir);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
+
+        for (String audioUrl : audioUrls) {
+            try {
+                URL url = new URL(audioUrl);
+                String fileName = downloadDir + File.separator + new File(audioUrl).getName();
+
+                try (InputStream in = url.openStream();
+                     OutputStream out = new FileOutputStream(fileName)) {
+                    Files.copy(in, Paths.get(fileName), StandardCopyOption.REPLACE_EXISTING);
+                    System.out.println("Downloaded: " + fileName);
+                } catch (IOException e) {
+                    System.err.println("Failed to download: " + audioUrl);
+                }
+            } catch (Exception e) {
+                System.err.println("An error occurred: " + e.getMessage());
+            }
+        }
+    }
+}
+
+
+
 
 
 import java.io.*;
