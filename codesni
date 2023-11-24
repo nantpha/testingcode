@@ -1,27 +1,154 @@
-   
-
-Subject: Gratitude for Your Timely Support
-
-Dear [Person's Name],
-
-I hope this message finds you well. I wanted to take a moment to express my heartfelt thanks for being there when I needed your help. Your timely support made a significant difference, and I am truly grateful.
-
-Your willingness to assist, especially at the right moment, demonstrates not only your kindness but also the strength of our connection. Knowing that I can rely on you during crucial times is invaluable, and I appreciate it more than words can convey.
-
-Thank you for your timely help and for being a pillar of support. Your generosity has not gone unnoticed, and I'm fortunate to have someone as reliable and caring as you in my life.
-
-Warm regards,
-
-[Your Name]
 
 
-Subject: Recognition for Outstanding Performance
 
-Dear [Colleague's Name],
 
-I hope this message finds you well. I wanted to take a moment to express my heartfelt appreciation for the hard work and dedication you've demonstrated, particularly in your recent contributions to [specific project or task].
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 
-Your commitment to excellence and your ability to deliver under pressure have not gone unnoticed. The way you tackled [mention specific tasks or challenges] was nothing short of impressive, and the results speak volumes about your skills and work ethic.
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class FileCheckService {
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
+    private final JavaMailSender emailSender;
+
+    public FileCheckService(JavaMailSender emailSender) {
+        this.emailSender = emailSender;
+    }
+
+    // Method to check files and send email notification
+    @Scheduled(cron = "0 0 * * * *") // Run the job every hour
+    public void checkAndSendEmail() {
+        // Replace "/path/to/your/directory" with the actual path
+        String directoryPath = "/path/to/your/directory";
+        long oneHourAgo = System.currentTimeMillis() - 3600000; // 1 hour in milliseconds
+
+        try {
+            List<String> recentFiles = Files.walk(Paths.get(directoryPath), FileVisitOption.FOLLOW_LINKS)
+                    .filter(file -> file.toFile().isFile() && file.toFile().lastModified() > oneHourAgo)
+                    .map(Path::toString)
+                    .collect(Collectors.toList());
+
+            if (!recentFiles.isEmpty()) {
+                sendEmail(recentFiles);
+            }
+        } catch (IOException e) {
+            e.printStackTrace(); // Handle the exception appropriately
+        }
+    }
+
+    private void sendEmail(List<String> attachedFiles) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo("recipient-email@example.com"); // Replace with the recipient's email
+        message.setSubject("New Files Created in the Last Hour");
+        message.setText("The following files were created in the last hour:\n" + String.join("\n", attachedFiles));
+
+        emailSender.send(message);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-email-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Component
+public class FileCheckScheduler {
+
+    private final FileCheckService fileCheckService;
+
+    public FileCheckScheduler(FileCheckService fileCheckService) {
+        this.fileCheckService = fileCheckService;
+    }
+
+    // Run the job every hour
+    @Scheduled(cron = "0 0 * * * *")
+    public void runFileCheckJob() {
+        fileCheckService.checkAndSendEmail();
+    }
+}
+
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+@Service
+public class FileCheckService {
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
+    private final JavaMailSender emailSender;
+
+    public FileCheckService(JavaMailSender emailSender) {
+        this.emailSender = emailSender;
+    }
+
+    // Method to check files and send email notification
+    public void checkAndSendEmail() {
+        // Replace "/path/to/your/directory" with the actual path
+        File directory = new File("/path/to/your/directory");
+
+        long oneHourAgo = System.currentTimeMillis() - 3600000; // 1 hour in milliseconds
+
+        File[] recentFiles = directory.listFiles(file -> file.isFile() && file.lastModified() > oneHourAgo);
+
+        if (recentFiles != null && recentFiles.length > 0) {
+            String fileNames = Arrays.stream(recentFiles)
+                    .map(File::getName)
+                    .collect(Collectors.joining(", "));
+
+            sendEmail(fileNames);
+        }
+    }
+
+    private void sendEmail(String attachedFiles) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo("recipient-email@example.com"); // Replace with the recipient's email
+        message.setSubject("New Files Created in the Last Hour");
+        message.setText("The following files were created in the last hour: " + attachedFiles);
+
+        emailSender.send(message);
+    }
+}
+
+
+
+
+nd your ability to deliver under pressure have not gone unnoticed. The way you tackled [mention specific tasks or challenges] was nothing short of impressive, and the results speak volumes about your skills and work ethic.
 
 Your contributions played a pivotal role in the success of our recent project, and I want to personally acknowledge and thank you for your outstanding efforts. Your attention to detail, proactive approach, and determination have set a high standard for our team.
 
@@ -29,14 +156,9 @@ It's a pleasure to work alongside someone who consistently goes above and beyond
 
 Thank you for your unwavering commitment and the positive impact you've made. Looking forward to achieving even greater milestones together.
 
-Best Regards,
 
-[Your Name]
-[Your Position]
-[Your Company]
-Subject: Heartfelt Appreciation for Your Hard Work and Dedication
 
-Dear [Colleague's Name],
+
 
 I trust this message finds you well. I wanted to take a moment to extend my sincere appreciation for your exceptional dedication and hard work on [specific project or task]. Your efforts have not only been noticed but have played a crucial role in the success of our team.
 
@@ -48,15 +170,8 @@ Thank you for your tireless effort and the high standard of work you consistentl
 
 Once again, thank you for your outstanding contributions. They have not gone unnoticed and are sincerely appreciated.
 
-Best Regards,
 
-[Your Name]
-[Your Position]
-[Your Company]
 
-Subject: Heartfelt Appreciation for Exceptional Team Effort
-
-Dear [Team Members' Names],
 
 I hope this message finds you well. I wanted to take a moment to express my sincere appreciation for the incredible effort and hard work each one of you has put into our recent project.
 
@@ -70,16 +185,9 @@ Let's continue this momentum and success into our future endeavors. Your hard wo
 
 Once again, thank you all for your exceptional work. It is truly appreciated.
 
-Best Regards,
-
-[Your Name]
-[Your Position]
-[Your Company]
 
 
-Subject: Gratitude for Your Exceptional Effort
 
-Dear [Team Members' Names],
 
 I hope this message finds you in good spirits. I wanted to take a moment to express my heartfelt appreciation for the outstanding effort each one of you has dedicated to our recent endeavors.
 
@@ -89,13 +197,19 @@ I want you to know that your contributions have not only met but surpassed our e
 
 Thank you for going above and beyond. Your collective effort has elevated our team and set a standard of excellence that we can all be proud of. I look forward to achieving even greater milestones together in the future.
 
-Please take a moment to acknowledge your own accomplishments—you've earned it. Your hard work is appreciated more than words can convey.
+Please take a moment to acknowledge your own accomplishments—you've earned it. Your hard work is appreciated moreI hope this message finds you well. I wanted to take a moment to express my heartfelt thanks for being there when I needed your help. Your timely support made a significant difference, and I am truly grateful.
 
-Best Regards,
+Your willingness to assist, especially at the right moment, demonstrates not only your kindness but also the strength of our connection. Knowing that I can rely on you during crucial times is invaluable, and I appreciate it more than words can convey.
 
-[Your Name]
-[Your Position]
-[Your Company]
+Thank you for your timely help and for being a pillar of support. Your generosity has not gone unnoticed, and I'm fortunate to have someone as reliable and caring as you in my life.
+
+
+
+I hope this message finds you well. I wanted to take a moment to express my heartfelt appreciation for the hard work and dedication you've demonstrated, particularly in your recent contributions to [specific project or task].
+
+Your commitment to excellence a than words can convey.
+
+
 
 
  {
