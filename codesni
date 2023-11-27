@@ -1,5 +1,31 @@
 
+import java.io.File;
+import java.util.Arrays;
 
+public class Last30DaysFiles {
+    public static void main(String[] args) {
+        String folderPath = "/path/to/your/folder";
+
+        File folder = new File(folderPath);
+
+        if (folder.exists() && folder.isDirectory()) {
+            File[] files = folder.listFiles((dir, name) -> {
+                long lastModified = new File(dir, name).lastModified();
+                long currentTime = System.currentTimeMillis();
+                long timeDifferenceInDays = (currentTime - lastModified) / (1000 * 60 * 60 * 24);
+
+                return timeDifferenceInDays <= 30 && timeDifferenceInDays >= 0.00347; // Approximately 5 minutes in days
+            });
+
+            if (files != null) {
+                Arrays.stream(files).forEach(file -> System.out.println("File: " + file.getAbsolutePath() +
+                        " was modified in the last 30 days, including the last 5 minutes."));
+            }
+        } else {
+            System.err.println("Folder not found or is not a directory.");
+        }
+    }
+}
 import java.io.File;
 import java.util.Arrays;
 
