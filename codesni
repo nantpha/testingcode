@@ -1,3 +1,82 @@
+<dependency>
+    <groupId>org.apache.curator</groupId>
+    <artifactId>curator-framework</artifactId>
+    <version>5.1.0</version>
+</dependency>
+
+
+
+
+
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+
+import java.io.File;
+
+public class RecentFilesExample {
+    private static final String ZK_CONNECTION_STRING = "your_zookeeper_server:2181";
+    private static final String LOCK_PATH = "/email-lock";
+    private static final int TARGET_CLUSTER = 1;
+
+    public static void main(String[] args) {
+        // Replace this with the path to your directory
+        String directoryPath = "/path/to/your/directory";
+
+        File directory = new File(directoryPath);
+
+        try (CuratorFramework client = CuratorFrameworkFactory.newClient(ZK_CONNECTION_STRING, new ExponentialBackoffRetry(1000, 3))) {
+            client.start();
+
+            // Ensure the lock path exists
+            client.create().creatingParentsIfNeeded().forPath(LOCK_PATH);
+
+            // Attempt to acquire the lock
+            if (tryAcquireLock(client)) {
+                try {
+                    // Perform the operation (send email) only on the target cluster
+                    if (isTargetCluster()) {
+                        // Your logic to send the email goes here
+                        System.out.println("Sending email...");
+                    }
+                } finally {
+                    // Release the lock when done
+                    releaseLock(client);
+                }
+            } else {
+                System.out.println("Another cluster is already processing the email.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static boolean tryAcquireLock(CuratorFramework client) throws Exception {
+        // Attempt to acquire the lock
+        return client
+                .acquire()
+                .inBackground()
+                .forPath(LOCK_PATH)
+                .forPath(LOCK_PATH) != null;
+    }
+
+    private static void releaseLock(CuratorFramework client) throws Exception {
+        // Release the lock
+        client.delete().forPath(LOCK_PATH);
+    }
+
+    private static boolean isTargetCluster() {
+        // Implement your logic to determine if the current cluster is the target cluster
+        // Replace this with your logic to determine the current cluster
+        return getCurrentCluster() == TARGET_CLUSTER;
+    }
+
+    private static int getCurrentCluster() {
+        // Implement your logic to determine the current cluster
+        // Replace this with your logic to determine the current cluster
+        return 1; // Example: Assume the code is running on cluster 1
+    }
+}
 
 import java.io.File;
 import java.util.Arrays;
