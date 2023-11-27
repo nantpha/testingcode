@@ -1,5 +1,3136 @@
 
 
+
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+
+import java.util.Properties;
+
+@Configuration
+public class MailConfig {
+
+    @Bean
+    public JavaMailSender javaMailSender() {
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost("smtp.gmail.com");
+        mailSender.setPort(587);
+        mailSender.setUsername("your_email@gmail.com");
+        mailSender.setPassword("your_password");
+
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+
+        return mailSender;
+    }
+}
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class FileCheckService {
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
+    private final JavaMailSender emailSender;
+
+    public FileCheckService(JavaMailSender emailSender) {
+        this.emailSender = emailSender;
+    }
+
+    // Method to check files and send email notification
+    @Scheduled(cron = "0 0 * * * *") // Run the job every hour
+    public void checkAndSendEmail() {
+        // Replace "/path/to/your/directory" with the actual path
+        String directoryPath = "/path/to/your/directory";
+        long oneHourAgo = System.currentTimeMillis() - 3600000; // 1 hour in milliseconds
+
+        try {
+            List<String> recentFiles = Files.walk(Paths.get(directoryPath), FileVisitOption.FOLLOW_LINKS)
+                    .filter(file -> file.toFile().isFile() && file.toFile().lastModified() > oneHourAgo)
+                    .map(Path::toString)
+                    .collect(Collectors.toList());
+
+            if (!recentFiles.isEmpty()) {
+                sendEmail(recentFiles);
+            }
+        } catch (IOException e) {
+            e.printStackTrace(); // Handle the exception appropriately
+        }
+    }
+
+    private void sendEmail(List<String> attachedFiles) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo("recipient-email@example.com"); // Replace with the recipient's email
+        message.setSubject("New Files Created in the Last Hour");
+        message.setText("The following files were created in the last hour:\n" + String.join("\n", attachedFiles));
+
+        emailSender.send(message);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-email-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Component
+public class FileCheckScheduler {
+
+    private final FileCheckService fileCheckService;
+
+    public FileCheckScheduler(FileCheckService fileCheckService) {
+        this.fileCheckService = fileCheckService;
+    }
+
+    // Run the job every hour
+    @Scheduled(cron = "0 0 * * * *")
+    public void runFileCheckJob() {
+        fileCheckService.checkAndSendEmail();
+    }
+}
+
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+@Service
+public class FileCheckService {
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
+    private final JavaMailSender emailSender;
+
+    public FileCheckService(JavaMailSender emailSender) {
+        this.emailSender = emailSender;
+    }
+
+    // Method to check files and send email notification
+    public void checkAndSendEmail() {
+        // Replace "/path/to/your/directory" with the actual path
+        File directory = new File("/path/to/your/directory");
+
+        long oneHourAgo = System.currentTimeMillis() - 3600000; // 1 hour in milliseconds
+
+        File[] recentFiles = directory.listFiles(file -> file.isFile() && file.lastModified() > oneHourAgo);
+
+        if (recentFiles != null && recentFiles.length > 0) {
+            String fileNames = Arrays.stream(recentFiles)
+                    .map(File::getName)
+                    .collect(Collectors.joining(", "));
+
+            sendEmail(fileNames);
+        }
+    }
+
+    private void sendEmail(String attachedFiles) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo("recipient-email@example.com"); // Replace with the recipient's email
+        message.setSubject("New Files Created in the Last Hour");
+        message.setText("The following files were created in the last hour: " + attachedFiles);
+
+        emailSender.send(message);
+    }
+}
+
+
+
+
+nd your ability to deliver under pressure have not gone unnoticed. The way you tackled [mention specific tasks or challenges] was nothing short of impressive, and the results speak volumes about your skills and work ethic.
+
+Your contributions played a pivotal role in the success of our recent project, and I want to personally acknowledge and thank you for your outstanding efforts. Your attention to detail, proactive approach, and determination have set a high standard for our team.
+
+It's a pleasure to work alongside someone who consistently goes above and beyond. Your dedication to achieving excellence is an inspiration to us all. I'm confident that your hard work will continue to drive our team's success.
+
+Thank you for your unwavering commitment and the positive impact you've made. Looking forward to achieving even greater milestones together.
+
+
+
+
+
+I trust this message finds you well. I wanted to take a moment to extend my sincere appreciation for your exceptional dedication and hard work on [specific project or task]. Your efforts have not only been noticed but have played a crucial role in the success of our team.
+
+Your commitment to excellence and the extra mile you consistently go do not go unnoticed. The way you handled [specific aspects of the project] showcased your skills and professionalism. It is clear that your hard work has made a significant impact on the final deliverables.
+
+I am grateful to have a colleague like you, whose work ethic and determination inspire those around them. Your contributions have not only met but exceeded our expectations, and I want to acknowledge the significant role you've played in our collective success.
+
+Thank you for your tireless effort and the high standard of work you consistently deliver. Your dedication is truly commendable, and I look forward to continuing to work together on future projects.
+
+Once again, thank you for your outstanding contributions. They have not gone unnoticed and are sincerely appreciated.
+
+
+
+
+I hope this message finds you well. I wanted to take a moment to express my sincere appreciation for the incredible effort and hard work each one of you has put into our recent project.
+
+Your dedication, creativity, and relentless commitment to excellence have not gone unnoticed. Together, we faced challenges head-on and achieved remarkable results. Your collaboration, teamwork, and individual contributions have truly made a significant impact.
+
+It's inspiring to work alongside such a talented and dedicated team. Your hard work has not only met but exceeded our expectations. Please take a moment to reflect on the positive difference you've made.
+
+Thank you for your tireless efforts, your positive attitude, and your unwavering commitment to our shared goals. I'm proud to have each of you as a part of this team.
+
+Let's continue this momentum and success into our future endeavors. Your hard work has not only made this project a success but has also set a high standard for our team's capabilities.
+
+Once again, thank you all for your exceptional work. It is truly appreciated.
+
+
+
+
+
+I hope this message finds you in good spirits. I wanted to take a moment to express my heartfelt appreciation for the outstanding effort each one of you has dedicated to our recent endeavors.
+
+Your hard work has not gone unnoticed. In the face of challenges, your commitment, resilience, and creativity have shone through, making a significant impact on our team's success. It's a testament to the exceptional talents each of you brings to the table.
+
+I want you to know that your contributions have not only met but surpassed our expectations. The energy and dedication you've poured into your work have been truly inspiring, and it's a pleasure to work alongside such a dedicated and accomplished team.
+
+Thank you for going above and beyond. Your collective effort has elevated our team and set a standard of excellence that we can all be proud of. I look forward to achieving even greater milestones together in the future.
+
+Please take a moment to acknowledge your own accomplishments—you've earned it. Your hard work is appreciated moreI hope this message finds you well. I wanted to take a moment to express my heartfelt thanks for being there when I needed your help. Your timely support made a significant difference, and I am truly grateful.
+
+Your willingness to assist, especially at the right moment, demonstrates not only your kindness but also the strength of our connection. Knowing that I can rely on you during crucial times is invaluable, and I appreciate it more than words can convey.
+
+Thank you for your timely help and for being a pillar of support. Your generosity has not gone unnoticed, and I'm fortunate to have someone as reliable and caring as you in my life.
+
+
+
+I hope this message finds you well. I wanted to take a moment to express my heartfelt appreciation for the hard work and dedication you've demonstrated, particularly in your recent contributions to [specific project or task].
+
+Your commitment to excellence a than words can convey.
+
+
+
+
+ {
+    public String convert(String s, int numRows) {
+        if(numRows < 2)
+        {
+            return s;
+        }
+        String str ="";
+        int x = s.length();
+        
+        char ans[][] = new char[numRows][x];
+        for(int i = 0 ; i < numRows; i++)
+        {
+            for(int j = 0; j < x; j++)
+            {
+               ans[i][j] = '&';
+            }
+        }
+        for(int i = 0, changer = 1, row = 0; i < s.length(); i++)
+        {
+            ans[row][i] = s.charAt(i);
+            if(row == numRows - 1)
+            {
+                changer = -1;
+            }
+            if(row == 0)
+            {
+                changer = 1;
+            }
+            row = row + changer;
+        }
+         for(int i = 0 ; i < numRows; i++)
+        {
+            for(int j = 0; j < x; j++)
+            {
+               if(ans[i][j] != '&')
+               {
+                   str = str + ans[i][j];
+               }
+            }
+        }
+        
+        return str;
+       
+
+
+
+string convert(string s, int numRows) {
+        
+
+
+
+
+if (numRows == 1) {
+            return s;
+        }
+        
+        stringstream answer;
+        int n = s.length();
+        int diff = 2 * (numRows - 1);
+        int diagonalDiff = diff;
+        int secondIndex;
+        int index;
+        for (int i = 0; i < numRows; i++) {
+            index = i;
+
+            while (index < n) {
+                answer << s[index];
+                if (i != 0 && i != numRows - 1) {
+                    diagonalDiff = diff-2*i;
+                    secondIndex = index + diagonalDiff;
+                    
+                    if (secondIndex < n) {
+                        answer << s[secondIndex];
+                    }
+                }
+                index += diff;
+            }
+        }
+        
+        return answer.str();
+    }
+s Solution {
+    public String convert(String s, int numRows) {
+        if (numRows == 1) {
+            return s;
+        }
+        
+        StringBuilder answer = new StringBuilder();
+        int n = s.length();
+        int diff = 2 * (numRows - 1);
+        int diagonalDiff = diff;
+        int secondIndex;
+        int index;
+        for (int i = 0; i < numRows; i++) {
+            index = i;
+
+            while (index < n) {
+                answer.append(s.charAt(index));
+                if (i != 0 && i != numRows - 1) {
+                    diagonalDiff = diff-2*i;
+                    secondIndex = index + diagonalDiff;
+                    
+                    if (secondIndex < n) {
+                        answer.append(s.charAt(secondIndex));
+                    }
+                }
+                index += diff;
+            }
+        }
+        
+        return answer
+
+
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
+
+public class AudioDownloaderWithHeaders {
+    public static void main(String[] args) {
+        List<String> audioUrls = List.of(
+            "http://example.com/audio1.mp3",
+            "http://example.com/audio2.mp3"
+            // Add more URLs as needed
+        );
+
+        String downloadDir = "downloaded_audio";
+
+        // Create the download directory if it doesn't exist
+        File directory = new File(downloadDir);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
+
+        for (String audioUrl : audioUrls) {
+            try {
+                URL url = new URL(audioUrl);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+                // Set custom headers here
+                connection.setRequestProperty("User-Agent", "YourUserAgent");
+                connection.setRequestProperty("Authorization", "Bearer YourAuthToken");
+
+                int responseCode = connection.getResponseCode();
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    String fileName = downloadDir + File.separator + new File(audioUrl).getName();
+
+                    try (InputStream in = connection.getInputStream();
+                         OutputStream out = new FileOutputStream(fileName)) {
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                        System.out.println("Downloaded: " + fileName);
+                    } catch (IOException e) {
+                        System.err.println("Failed to download: " + audioUrl);
+                    }
+                } else {
+                    System.err.println("Failed to download: " + audioUrl);
+                    System.err.println("Response Code: " + responseCode);
+                }
+
+                connection.disconnect();
+            } catch (Exception e) {
+                System.err.println("An error occurred: " + e.getMessage());
+            }
+        }
+    }
+}
+
+import java.io.*;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+
+public class AudioDownloader {
+    public static void main(String[] args) {
+        List<String> audioUrls = new ArrayList<>();
+        audioUrls.add("http://example.com/audio1.mp3");
+        audioUrls.add("http://example.com/audio2.mp3");
+        // Add more URLs as needed
+
+        String downloadDir = "downloaded_audio";
+
+        // Create the download directory if it doesn't exist
+        File directory = new File(downloadDir);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
+
+        for (String audioUrl : audioUrls) {
+            try {
+                URL url = new URL(audioUrl);
+                String fileName = downloadDir + File.separator + new File(audioUrl).getName();
+
+                try (InputStream in = url.openStream();
+                     OutputStream out = new FileOutputStream(fileName)) {
+                    Files.copy(in, Paths.get(fileName), StandardCopyOption.REPLACE_EXISTING);
+                    System.out.println("Downloaded: " + fileName);
+                } catch (IOException e) {
+                    System.err.println("Failed to download: " + audioUrl);
+                }
+            } catch (Exception e) {
+                System.err.println("An error occurred: " + e.getMessage());
+            }
+        }
+    }
+}
+
+
+
+
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+
+public class BufferedFileAppender {
+    private static final long MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
+    private static final String FILE_NAME = "output.txt";
+
+    private ByteArrayOutputStream byteArrayOutputStream;
+    private FileOutputStream fileOutputStream;
+
+    public BufferedFileAppender() throws IOException {
+        byteArrayOutputStream = new ByteArrayOutputStream();
+        fileOutputStream = new FileOutputStream(FILE_NAME, true); // Open the file in append mode
+    }
+
+    public void writeData(String data) throws IOException {
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+
+        if (byteArrayOutputStream.size() + dataBytes.length >= MAX_BUFFER_SIZE) {
+            flushBufferToFile(); // Flush the buffer to the file when it's full
+        }
+
+        byteArrayOutputStream.write(dataBytes);
+    }
+
+    public void close() throws IOException {
+        flushBufferToFile(); // Ensure any remaining data in the buffer is written
+        fileOutputStream.close();
+    }
+
+    private void flushBufferToFile() throws IOException {
+        if (byteArrayOutputStream.size() > 0) {
+            byteArrayOutputStream.writeTo(fileOutputStream);
+            byteArrayOutputStream.reset(); // Reset the buffer
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            BufferedFileAppender appender = new BufferedFileAppender();
+
+            for (int i = 0; i < 10; i++) {
+                String data = "Data " + i + "\n";
+                appender.writeData(data);
+            }
+
+            appender.close();
+
+            System.out.println("Data has been written to the file.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class BufferedFileWriter {
+    private static final int BUFFER_SIZE = 1024; // Set your desired buffer size
+    private static final String FILE_NAME = "output.txt";
+
+    private byte[] buffer;
+    private int bufferSize;
+    private BufferedOutputStream bufferedOutputStream;
+
+    public BufferedFileWriter() throws IOException {
+        buffer = new byte[BUFFER_SIZE];
+        bufferSize = 0;
+        bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(FILE_NAME, true));
+    }
+
+    public void writeData(String data) throws IOException {
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
+        int dataLength = dataBytes.length;
+
+        if (bufferSize + dataLength >= BUFFER_SIZE) {
+            flushBuffer(); // Flush the buffer when it's full
+        }
+
+        // Copy data to the buffer
+        System.arraycopy(dataBytes, 0, buffer, bufferSize, dataLength);
+        bufferSize += dataLength;
+    }
+
+    public void close() throws IOException {
+        flushBuffer(); // Ensure any remaining data in the buffer is written
+        bufferedOutputStream.close();
+    }
+
+    private void flushBuffer() throws IOException {
+        if (bufferSize > 0) {
+            bufferedOutputStream.write(buffer, 0, bufferSize);
+            bufferSize = 0; // Reset the buffer size
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            BufferedFileWriter writer = new BufferedFileWriter();
+
+            for (int i = 0; i < 10; i++) {
+                String data = "Data " + i + "\n";
+                writer.writeData(data);
+            }
+
+            writer.close();
+
+            System.out.println("Data has been written to the file.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+import io.grpc.*;
+import io.grpc.util.Retrying;
+
+ManagedChannel channel = ManagedChannelBuilder.forAddress("your_server_host", your_server_port)
+        .usePlaintext()
+        .build();
+
+MyServiceGrpc.MyServiceBlockingStub blockingStub = MyServiceGrpc.newBlockingStub(channel);
+
+RetryPolicy retryPolicy = RetryPolicy.builder()
+        .maxAttempts(3)
+        .retryOn(Status.Code.UNAVAILABLE)
+        .build();
+
+blockingStub = Retrying.newBuilder(blockingStub)
+        .retrying(retryPolicy)
+        .build
+
+String searchString = "your_search_string";
+
+for (File file : files) {
+    if (file.isFile()) {
+        String fileName = file.getName();
+        if (fileName.endsWith(searchString)) {
+            if (file.delete()) {
+                System.out.println("Deleted file: " + file.getAbsolutePath());
+            } else {
+                System.err.println("Failed to delete file: " + file.getAbsolutePath());
+            }
+        }
+    }
+}
+
+
+
+
+import java.util.regex.*;
+
+String s = "This is a \"quoted\" string";
+
+Pattern pattern = Pattern.compile("\"([^\"]*)\"");
+Matcher matcher = pattern.matcher(s);
+
+if (matcher.find()) {
+    String extractedValue = matcher.group(1);
+    System.out.println("Value inside quotes: " + extractedValue);
+} else {
+    System.out.println("No quoted value found in the string.");
+}
+
+
+
+
+import java.util.Random;
+
+public class RandomCodeGenerator {
+    public static void main(String[] args) {
+        // Define characters for letters
+        String letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        // Create a Random object
+        Random random = new Random();
+
+        // Generate the first 5 digits
+        StringBuilder code = new StringBuilder();
+        for (int i = 0; i < 5; i++) {
+            int digit = random.nextInt(10);
+            code.append(digit);
+        }
+
+        // Generate 5 random letters
+        for (int i = 0; i < 5; i++) {
+            int letterIndex = random.nextInt(letters.length());
+            char letter = letters.charAt(letterIndex);
+            code.append(letter);
+        }
+
+        // Print the generated code
+        System.out.println("Generated Code: " + code.toString());
+    }
+}
+
+
+
+public class CopyUtil {
+    @SuppressWarnings("unchecked")
+    public static <T> T copyObject(T original) throws IOException, ClassNotFoundException {
+        if (original == null) {
+            return null;
+        }
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(original);
+        oos.flush();
+        oos.close();
+
+        byte[] objectBytes = bos.toByteArray();
+
+        ByteArrayInputStream bis = new ByteArrayInputStream(objectBytes);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+
+        return (T) ois.readObject();
+    }
+} 
+
+Certainly, if you want to acknowledge a remarkable contribution, you can say something like:
+
+"Your contribution to our project has been truly remarkable. Your dedication and expertise have set a new standard for excellence. Thank you for your outstanding work!"
+
+
+Of course, here's another way to express appreciation for a remarkable contribution:
+
+"I want to take a moment to recognize the remarkable contribution you've made. Your efforts have not only exceeded our expectations but have also been instrumental in our project's success. Thank you for your exceptional work and dedication!"
+
+int length = 10; // Specify the length of the random string
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder randomString = new StringBuilder();
+
+        Random random = new Random();
+
+        for (int i = 0; i < length; i++) {
+            int randomIndex = random.nextInt(characters.length());
+            char randomChar = characters.charAt(randomIndex);
+            randomString.append(randomChar);
+        }
+
+        System.out.println("Random String: " + randomString.toString());
+    }
+
+
+
+existingWebClient.mutate()
+        .filter((request, next) -> {
+            logRequest(request);
+            return next.exchange(request)
+                    .doOnNext(response -> logResponse(response))
+                    .onErrorResume(throwable -> {
+                        logError(throwable);
+                        return Mono.error(throwable);
+                    });
+        })
+        .build()
+
+
+
+import org.apache.commons.io.output.TeeOutputStream;
+
+import java.io.*;
+
+public class CustomTeeOutputStream extends TeeOutputStream implements SharedDataHolder {
+    private ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+    public CustomTeeOutputStream(OutputStream out1, OutputStream out2) {
+        super(out1, out2);
+    }
+
+    @Override
+    public void processData(InputStream inputStream) throws IOException {
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            // Write the bytes to both the underlying TeeOutputStream and the ByteArrayOutputStream
+            super.write(buffer, 0, bytesRead);
+            byteArrayOutputStream.write(buffer, 0, bytesRead);
+        }
+    }
+
+    @Override
+    public byte[] getSharedData() {
+        return byteArrayOutputStream.toByteArray();
+    }
+}
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+public class MainClass {
+    public static void main(String[] args) {
+        // Sample byte array received from an external source (replace this with your actual byte array)
+        byte[] bytesFromExternalSource = "Hello, this is data from an external source.".getBytes();
+
+        // Create a CustomTeeOutputStream to handle the data distribution
+        CustomTeeOutputStream customTeeOutputStream = new CustomTeeOutputStream(System.out, new ByteArrayOutputStream());
+
+        // Process the data using the CustomTeeOutputStream
+        try (InputStream inputStream = new ByteArrayInputStream(bytesFromExternalSource)) {
+            customTeeOutputStream.processData(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Now, the data is available through the customTeeOutputStream
+        methodB(new ByteArrayInputStream(customTeeOutputStream.getSharedData()));
+    }
+
+    // Sample method that receives an input stream and reads bytes from it (e.g., for processing)
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Convert the bytes to a string and print it
+                String data = new String(buffer, 0, bytesRead);
+                System.out.println("Method B: " + data);
+            }
+
+            // Don't forget to close the input stream
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+import org.apache.commons.io.output.TeeOutputStream;
+import java.io.*;
+import java.util.Arrays;
+
+public class MainClass {
+    public static void main(String[] args) {
+        // Sample byte array received from an external source (replace this with your actual byte array)
+        byte[] bytesFromExternalSource = "Hello, this is data from an external source.".getBytes();
+
+        // Create a custom implementation of SharedDataHolder to hold the shared data
+        SharedDataHolderImpl sharedDataHolder = new SharedDataHolderImpl();
+
+        // Pass the sharedDataHolder to methodA and methodB using TeeOutputStream
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             TeeOutputStream teeOutputStream = new TeeOutputStream(System.out, byteArrayOutputStream, sharedDataHolder)) {
+            // Use the teeOutputStream to write bytes received from the external source
+            teeOutputStream.write(bytesFromExternalSource);
+            // Don't forget to flush the streams
+            teeOutputStream.flush();
+            // Now, the data is available through the sharedDataHolder interface
+            methodB(new ByteArrayInputStream(sharedDataHolder.getSharedData()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it (e.g., for processing)
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Convert the bytes to a string and print it
+                String data = new String(buffer, 0, bytesRead);
+                System.out.println("Method B: " + data);
+            }
+
+            // Don't forget to close the input stream
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Custom implementation of SharedDataHolder to hold the shared data
+    static class SharedDataHolderImpl implements SharedDataHolder {
+        private byte[] sharedData;
+
+        @Override
+        public void setSharedData(byte[] data) {
+            this.sharedData = data;
+        }
+
+        // Interface method to get the shared data
+        public byte[] getSharedData() {
+            return sharedData;
+        }
+    }
+}
+
+import org.apache.commons.io.output.TeeOutputStream;
+import java.io.*;
+import java.util.Arrays;
+
+public class MainClass {
+    public static void main(String[] args) {
+        // Sample byte array received from an external source (replace this with your actual byte array)
+        byte[] bytesFromExternalSource = "Hello, this is data from an external source.".getBytes();
+
+        // Create a custom implementation of SharedDataHolder to hold the shared data
+        SharedDataHolderImpl sharedDataHolder = new SharedDataHolderImpl();
+
+        // Pass the sharedDataHolder to methodA and methodB using TeeOutputStream
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             TeeOutputStream teeOutputStream = new TeeOutputStream(System.out, byteArrayOutputStream, sharedDataHolder)) {
+            // Use the teeOutputStream to write bytes received from the external source
+            teeOutputStream.write(bytesFromExternalSource);
+            // Don't forget to flush the streams
+            teeOutputStream.flush();
+            // Now, the data is available through the sharedDataHolder interface
+            methodB(new ByteArrayInputStream(sharedDataHolder.getSharedData()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it (e.g., for processing)
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Convert the bytes to a string and print it
+                String data = new String(buffer, 0, bytesRead);
+                System.out.println("Method B: " + data);
+            }
+
+            // Don't forget to close the input stream
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Custom implementation of SharedDataHolder to hold the shared data
+    static class SharedDataHolderImpl implements SharedDataHolder {
+        private byte[] sharedData;
+
+        @Override
+        public void setSharedData(byte[] data) {
+            this.sharedData = data;
+        }
+
+        // Interface method to get the shared data
+        public byte[] getSharedData() {
+            return sharedData;
+        }
+    }
+}
+
+
+
+import org.apache.commons.io.output.TeeOutputStream;
+
+import java.io.*;
+import java.util.Arrays;
+
+public class OutputStreamDistributionExample {
+    public static void main(String[] args) {
+        // Sample byte array (replace this with your actual byte array from the method parameter)
+        byte[] bytes = "Hello, this is a sample byte array.".getBytes();
+
+        // Create an input stream from the byte array
+        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+            // Create an output stream to save the data to a file
+            FileOutputStream fileOutputStream = new FileOutputStream("output.txt");
+
+            // Create a ByteArrayOutputStream to store the data in memory
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+            // Use TeeOutputStream to split the data into fileOutputStream and byteArrayOutputStream
+            TeeOutputStream teeOutputStream = new TeeOutputStream(fileOutputStream, byteArrayOutputStream);
+
+            // Pass the teeOutputStream to methodA to save the data to the file
+            methodA(inputStream, teeOutputStream);
+
+            // Pass the byteArrayOutputStream to methodB to pass the data to Angular UI
+            methodB(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and writes the bytes to an output stream (e.g., file)
+    public static void methodA(InputStream inputStream, OutputStream outputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Write the bytes to the output stream (e.g., fileOutputStream)
+                outputStream.write(buffer, 0, bytesRead);
+            }
+
+            // Don't forget to close the output stream
+            outputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it (e.g., for passing to Angular UI)
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Do something with the bytes, e.g., send them to Angular UI.
+                // Here, we're just printing them for demonstration purposes.
+                System.out.println("Method B: " + Arrays.toString(Arrays.copyOfRange(buffer, 0, bytesRead)));
+            }
+
+            // Don't forget to close the input stream
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+import org.apache.commons.io.input.TeeInputStream;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
+
+public class TeeInputStreamExample {
+    public static void main(String[] args) {
+        // Sample byte array (replace this with your actual byte array from the method parameter)
+        byte[] bytes = "Hello, this is a sample byte array.".getBytes();
+
+        // Create an input stream from the byte array
+        try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+
+            // Create two output streams (e.g., methodAOutputStream and methodBOutputStream)
+            // Here, we are just using System.out to represent methodAOutputStream and methodBOutputStream.
+            // You should replace System.out with your actual method-specific output streams.
+            // For example, you could use FileOutputStream to write to files, etc.
+            TeeInputStream teeInputStream = new TeeInputStream(inputStream, System.out);
+
+            // Now, you can pass the teeInputStream to the methods that require the bytes.
+            methodA(teeInputStream);
+            methodB(teeInputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Sample method that receives an input stream and reads bytes from it.
+    public static void methodA(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Do something with the bytes, e.g., process them in some way.
+                // Here, we're just printing them for demonstration purposes.
+                System.out.println("Method A: " + new String(buffer, 0, bytesRead));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Another sample method that receives an input stream and reads bytes from it.
+    public static void methodB(InputStream inputStream) {
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                // Do something else with the bytes, e.g., process them in a different way.
+                // Here, we're just printing them for demonstration purposes.
+                System.out.println("Method B: " + Arrays.toString(Arrays.copyOfRange(buffer, 0, bytesRead)));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class GrpcClient {
+    public static void main(String[] args) throws IOException {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+                .usePlaintext()
+                .build();
+
+        GrpcServiceGrpc.GrpcServiceStub stub = GrpcServiceGrpc.newStub(channel);
+
+        PipedInputStream pipedInputStream = new PipedInputStream();
+        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+        CompletableFuture<Void> localProcessingFuture = CompletableFuture.runAsync(() -> {
+            try {
+                processLocalData(pipedInputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, executorService);
+
+        CompletableFuture<Void> sendDataToOtherApplicationFuture = CompletableFuture.runAsync(() -> {
+            try {
+                sendDataToOtherApplication(pipedOutputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, executorService);
+
+        // Read from the gRPC stream and write to the PipedOutputStream
+        CompletableFuture<Void> grpcFuture = CompletableFuture.runAsync(() -> {
+            try {
+                stub.getData(Request.newBuilder().build()).writeTo(pipedOutputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, executorService);
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(localProcessingFuture, sendDataToOtherApplicationFuture, grpcFuture);
+        allFutures.join();
+
+        // Close the channel and executor service properly after processing
+        channel.shutdown();
+        executorService.shutdown();
+    }
+
+    private static void processLocalData(PipedInputStream inputStream) throws IOException {
+        // Implement your local data processing logic here
+        // For example, you can read from the PipedInputStream and process the data
+        // without storing it in memory
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            // Process the data without storing it
+            // ...
+        }
+    }
+
+    private static void sendDataToOtherApplication(PipedOutputStream outputStream) throws IOException {
+        // Implement sending logic to the other application
+        // For example, you can read from the PipedOutputStream and send the data
+        // without storing it in memory
+    }
+}
+
+
+
+import java.io.IOException;
+import java.io.OutputStream;
+
+public class TeeOutputStream extends OutputStream {
+    private final OutputStream outputStream1;
+    private final OutputStream outputStream2;
+
+    public TeeOutputStream(OutputStream outputStream1, OutputStream outputStream2) {
+        this.outputStream1 = outputStream1;
+        this.outputStream2 = outputStream2;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+        outputStream1.write(b);
+        outputStream2.write(b);
+    }
+
+    @Override
+    public void write(byte[] b) throws IOException {
+        outputStream1.write(b);
+        outputStream2.write(b);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+        outputStream1.write(b, off, len);
+        outputStream2.write(b, off, len);
+    }
+
+    @Override
+    public void flush() throws IOException {
+        outputStream1.flush();
+        outputStream2.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            outputStream1.close();
+        } finally {
+            outputStream2.close();
+        }
+    }
+}
+
+
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class GrpcClient {
+    public static void main(String[] args) throws IOException {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+                .usePlaintext()
+                .build();
+
+        GrpcServiceGrpc.GrpcServiceStub stub = GrpcServiceGrpc.newStub(channel);
+
+        PipedInputStream pipedInputStream = new PipedInputStream();
+        PipedOutputStream pipedOutputStream = new PipedOutputStream(pipedInputStream);
+
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+
+        // Thread to read from gRPC stream and write to PipedOutputStream
+        executorService.execute(() -> {
+            stub.getData(Request.newBuilder().build(), new StreamObserver<Response>() {
+                @Override
+                public void onNext(Response response) {
+                    try {
+                        response.getData().writeTo(pipedOutputStream);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    t.printStackTrace();
+                }
+
+                @Override
+                public void onCompleted() {
+                    try {
+                        pipedOutputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        });
+
+        // Thread to read from PipedInputStream and process data
+        executorService.execute(() -> {
+            try {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = pipedInputStream.read(buffer)) != -1) {
+                    // Process data locally
+                    // ...
+
+                    // Send data to the other application
+                    sendDataToOtherApplication(buffer, bytesRead);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    // Method to send data to the other application
+    private static void sendDataToOtherApplication(byte[] data, int length) {
+        // Implement sending logic to the other application
+        // ...
+    }
+}
+
+
+import org.springframework.web.reactive.function.client.WebClient;
+
+// ... other imports and setup ...
+
+public class DataProcessor {
+    private WebClient webClient;
+    private FileOutputStream fileOutputStream;
+
+    public DataProcessor() {
+        // Initialize WebClient with the base URL of the external API or service
+        this.webClient = WebClient.create("https://api.example.com");
+
+        try {
+            // Create the output stream to the file (for logging or other processing)
+            fileOutputStream = new FileOutputStream("output.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void processData(InputStream inputStream) {
+        // Create a custom output stream that duplicates the incoming bytes
+        TeeOutputStream teeOutputStream = new TeeOutputStream(webClientToOutputStream(), fileOutputStream);
+
+        // Your continuous stream reading logic goes here, writing to the teeOutputStream
+        // For example:
+        // byte[] buffer = new byte[4096];
+        // int bytesRead;
+        // while ((bytesRead = inputStream.read(buffer)) != -1) {
+        //     teeOutputStream.write(buffer, 0, bytesRead);
+        // }
+    }
+
+    private OutputStream webClientToOutputStream() {
+        // Implement a custom OutputStream that sends the incoming bytes to WebClient
+        // Here, you can use WebClient to make non-blocking HTTP requests
+        return new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                // Convert the incoming bytes to the format required by the external API
+                // For example, append the byte to a buffer and send when a specific delimiter is reached
+                // webClient.post() or webClient.put() or any other method to send the data
+            }
+
+            // Implement other write methods as needed for better performance
+
+            @Override
+            public void close() throws IOException {
+                // Complete the HTTP request when the stream is closed
+                // You can also handle errors and handle the response here if needed
+            }
+        };
+    }
+
+    public void shutdown() {
+        // Remember to close the file output stream when the processing is done
+        try {
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/example")
+public class TeeServlet extends HttpServlet {
+    private FileOutputStream fileOutputStream;
+
+    @Override
+    public void init() throws ServletException {
+        try {
+            // Create the output stream to the file (for logging or other processing)
+            fileOutputStream = new FileOutputStream("output.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Create the response output stream
+            ServletOutputStream responseOutputStream = response.getOutputStream();
+
+            // Create a custom output stream that duplicates the incoming bytes
+            TeeOutputStream teeOutputStream = new TeeOutputStream(responseOutputStream, fileOutputStream);
+
+            // Pass the custom output stream to other methods or perform further processing
+            processDataStream(teeOutputStream);
+
+            // Remember to flush and close the output streams
+            fileOutputStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processDataStream(OutputStream outputStream) throws IOException {
+        // This method will receive the data stream in real-time
+        // Perform further processing or pass the stream to other methods as needed
+
+        // Your continuous stream reading logic goes here, writing to the outputStream
+        // For example:
+        // InputStream inputStream = someMethodToGetInputStream();
+        // byte[] buffer = new byte[4096];
+        // int bytesRead;
+        // while ((bytesRead = inputStream.read(buffer)) != -1) {
+        //     outputStream.write(buffer, 0, bytesRead);
+        // }
+    }
+
+    @Override
+    public void destroy() {
+        // Remember to close the file output stream when the servlet is destroyed
+        try {
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/voice")
+public class VoiceServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Create the output stream to the file (for logging or other processing)
+            FileOutputStream fileOutputStream = new FileOutputStream("voice_log.raw");
+
+            // Create the response output stream
+            ServletOutputStream responseOutputStream = response.getOutputStream();
+
+            // Create the TeeOutputStream by providing both streams
+            TeeOutputStream tee = new TeeOutputStream(responseOutputStream, fileOutputStream);
+
+            // Create a custom input stream that duplicates the incoming voice bytes
+            VoiceInputStream voiceInputStream = new VoiceInputStream(request.getInputStream(), tee);
+
+            // Start processing voice data in real-time without holding it in memory
+            processVoiceStream(voiceInputStream);
+
+            // Remember to close the output streams
+            fileOutputStream.flush();
+            fileOutputStream.close();
+            responseOutputStream.flush();
+            responseOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processVoiceStream(VoiceInputStream voiceInputStream) throws IOException {
+        // Process the voice data in real-time without holding it in memory
+        int byteData;
+        while ((byteData = voiceInputStream.read()) != -1) {
+            // Your custom logic for real-time processing of voice data goes here
+            // For example, you could analyze the voice data, store it in a database, etc.
+            // You can also pass the byteData to other methods or APIs for further processing
+            // Your custom logic goes here
+        }
+    }
+
+    private static class VoiceInputStream extends ServletInputStream {
+        private final InputStream inputStream;
+        private final OutputStream outputStream;
+
+        VoiceInputStream(InputStream inputStream, OutputStream outputStream) {
+            this.inputStream = inputStream;
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int byteData = inputStream.read();
+            if (byteData != -1) {
+                outputStream.write(byteData);
+            }
+            return byteData;
+        }
+
+        // Override other read methods as needed
+
+        @Override
+        public void close() throws IOException {
+            inputStream.close();
+            outputStream.close();
+        }
+    }
+}
+
+
+
+
+
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/voice")
+public class VoiceServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Get the request input stream
+            InputStream requestInputStream = request.getInputStream();
+
+            // Create an output stream to the file (for logging or other processing)
+            FileOutputStream fileOutputStream = new FileOutputStream("voice_log.raw");
+
+            // Create a custom input stream
+            VoiceInputStream voiceInputStream = new VoiceInputStream(requestInputStream, fileOutputStream);
+
+            // Pass the custom input stream to other methods or perform further processing
+            processVoiceStream(voiceInputStream);
+
+            // Remember to close the output stream
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processVoiceStream(VoiceInputStream voiceInputStream) throws IOException {
+        // This method will receive the voice data stream in real-time
+        // Perform further processing or pass the stream to other methods as needed
+        int byteData;
+        while ((byteData = voiceInputStream.read()) != -1) {
+            // Your custom logic for real-time processing of voice data goes here
+            // For example, you could analyze the voice data, store it in a database, etc.
+        }
+    }
+
+    private static class VoiceInputStream extends ServletInputStream {
+        private final InputStream inputStream;
+        private final OutputStream outputStream;
+
+        VoiceInputStream(InputStream inputStream, OutputStream outputStream) {
+            this.inputStream = inputStream;
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int byteData = inputStream.read();
+            if (byteData != -1) {
+                outputStream.write(byteData);
+            }
+            return byteData;
+        }
+
+        // Override other read methods as needed
+
+        @Override
+        public void close() throws IOException {
+            inputStream.close();
+            outputStream.close();
+        }
+    }
+}
+
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+
+@WebServlet("/example")
+public class TeeServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        try {
+            // Create the output stream to the file
+            FileOutputStream fileOutputStream = new FileOutputStream("output.txt");
+
+            // Create the response output stream
+            ServletOutputStream responseOutputStream = response.getOutputStream();
+
+            // Create the TeeOutputStream by providing both streams
+            TeeOutputStream tee = new TeeOutputStream(fileOutputStream, responseOutputStream);
+
+            // Wrap the TeeOutputStream in a custom ServletOutputStream
+            ServletOutputStream customOutputStream = new ServletOutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    tee.write(b);
+                    // You can perform additional operations here with the byte (b) received from the request
+                    // For example, you could pass it to other methods or process it further
+                    // Your custom logic goes here
+                }
+            };
+
+            // Set the custom output stream as the response output stream
+            response.setOutputStream(customOutputStream);
+
+            // Read bytes from the request and distribute them using the TeeOutputStream
+            InputStream requestInputStream = request.getInputStream();
+            int byteData;
+            while ((byteData = requestInputStream.read()) != -1) {
+                customOutputStream.write(byteData);
+            }
+
+            // Remember to flush and close the output streams
+            customOutputStream.flush();
+            fileOutputStream.flush();
+            customOutputStream.close();
+            fileOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
+public class IISConnectionExample {
+    public static void main(String[] args) {
+        try {
+            String serverUrl = "http://your-iis-server.com"; // Replace with the actual IIS server URL
+            String username = "your-username"; // Replace with your username
+            String password = "your-password"; // Replace with your password
+            
+            String credentials = username + ":" + password;
+            byte[] encodedCredentials = Base64.getEncoder().encode(credentials.getBytes(StandardCharsets.UTF_8));
+            String authHeaderValue = "Basic " + new String(encodedCredentials, StandardCharsets.UTF_8);
+            
+            URL url = new URL(serverUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            
+            // Set authentication header
+            connection.setRequestProperty("Authorization", authHeaderValue);
+            
+            // Optional: Set request method, headers, timeouts, etc.
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+            
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                String line;
+                StringBuilder response = new StringBuilder();
+                
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+                
+                System.out.println("Response: " + response.toString());
+            } else {
+                System.out.println("Connection failed. Response Code: " + responseCode);
+            }
+            
+            connection.disconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+Sure! Here are a few quotes about hard work:
+
+1. "Hard work beats talent when talent doesn't work hard." - Tim Notke
+
+2. "The only place where success comes before work is in the dictionary." - Vidal Sassoon
+
+3. "Success is no accident. It is hard work, perseverance, learning, studying, sacrifice, and most of all, love of what you are doing or learning to do." - Pelé
+
+4. "The difference between ordinary and extraordinary is that little extra." - Jimmy Johnson
+
+5. "The harder I work, the luckier I get." - Gary Player
+
+Remember, hard work is often the key to achieving your goals and reaching new heights.
+
+
+
+
+
+
+Dear [Team Member's Name],
+
+I want to take a moment to express my deepest appreciation for your exceptional work in implementing innovation and driving its success. Your dedication, ingenuity, and perseverance have brought about remarkable results that have positively impacted our team and organization.
+
+Your commitment to innovation is truly commendable. Your ability to turn ideas into reality and navigate the challenges along the way is a testament to your remarkable skills. Your implementation of innovative solutions has not only improved our processes but has also delivered tangible success and measurable results.
+
+Your unwavering belief in the power of innovation has inspired those around you. Your leadership and collaborative spirit have fostered an environment where creative thinking and bold ideas thrive. You have shown us the true potential of innovation and its capacity to transform our work and drive our success.
+
+I am deeply grateful for your vision, expertise, and tireless efforts in implementing innovation. Your contributions have not only brought about positive change but have also set a shining example for others to follow. You have proven that innovation is not just a buzzword, but a mindset and a way of approaching challenges with a fresh perspective.
+
+Thank you for your relentless pursuit of innovation and the incredible success you have achieved. Your achievements serve as a reminder of the remarkable things we can accomplish when we embrace creativity and think beyond conventional boundaries.
+
+Please accept my heartfelt appreciation and admiration for your outstanding work. I am excited to see the continued impact you will make through your innovative spirit.
+
+With sincere gratitude,
+[Your Name]
+
+
+
+When appreciating a team member for their work on product delivery, it's important to express your gratitude and acknowledge their contributions. Here's an example of how you can appreciate them:
+
+"Dear [Team Member's Name],
+
+I wanted to personally express my heartfelt appreciation for your exceptional work on the product delivery. Your dedication, hard work, and attention to detail have been truly outstanding.
+
+Throughout the entire process, your commitment to excellence shone brightly. Your efforts ensured that the product was delivered smoothly and on time, exceeding our expectations. The level of professionalism and expertise you demonstrated is commendable.
+
+I want to thank you for your tireless efforts and going the extra mile to ensure a successful delivery. Your contributions have been invaluable to the team and have made a significant impact on our overall success.
+
+Your exceptional work ethic, problem-solving skills, and attention to customer satisfaction have not gone unnoticed. You consistently display a high level of competence and professionalism, and your positive attitude is contagious within the team.
+
+Please accept my sincere gratitude for your outstanding performance and dedication. Your work sets a standard of excellence that others can strive to achieve. It is a privilege to have you as a member of our team, and I look forward to future collaborations and achievements together.
+
+Thank you once again for your remarkable contributions. Your hard work and commitment are deeply appreciated.
+
+Warm regards,
+[Your Name]"
+
+Feel free to personalize this message and include specific details about the team member's accomplishments or contributions. It's important to be specific and genuine in your appreciation, as it helps reinforce their value and encourages continued excellence.
+
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class Main {
+    public static void main(String[] args) {
+        List<Integer> recordsList = new ArrayList<>();
+
+        // Example list of 250 records
+        for (int i = 1; i <= 250; i++) {
+            recordsList.add(i);
+        }
+
+        // Create chunks of 100 records
+        List<List<Integer>> chunks = IntStream.range(0, recordsList.size())
+                .boxed()
+                .collect(Collectors.groupingBy(index -> index / 100))
+                .values()
+                .stream()
+                .map(indices -> indices.stream()
+                        .map(recordsList::get)
+                        .collect(Collectors.toList()))
+                .collect(Collectors.toList());
+
+        // Iterate over chunks and call method with 10 records
+        chunks.stream()
+                .flatMap(chunk -> IntStream.range(0, chunk.size())
+                        .filter(i -> i % 10 == 0)
+                        .mapToObj(i -> chunk.subList(i, Math.min(i + 10, chunk.size()))))
+                .forEach(Main::callMethod);
+    }
+
+    public static void callMethod(List<Integer> records) {
+        // Your method implementation goes here
+        System.out.println("Calling method with " + records.size() + " records");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Main {
+    public static void main(String[] args) {
+        List<Integer> recordsList = new ArrayList<>();
+
+        // Example list of 250 records
+        for (int i = 1; i <= 250; i++) {
+            recordsList.add(i);
+        }
+
+        // Create chunks of 100 records
+        List<List<Integer>> chunks = new ArrayList<>();
+        for (int i = 0; i < recordsList.size(); i += 100) {
+            chunks.add(recordsList.subList(i, Math.min(i + 100, recordsList.size())));
+        }
+
+        // Iterate over chunks and call method with 10 records
+        chunks.stream()
+                .flatMap(chunk -> IntStream.range(0, chunk.size())
+                        .filter(i -> i % 10 == 0)
+                        .mapToObj(i -> chunk.subList(i, Math.min(i + 10, chunk.size()))))
+                .forEach(Main::callMethod);
+    }
+
+    public static void callMethod(List<Integer> records) {
+        // Your method implementation goes here
+        System.out.println("Calling method with " + records.size() + " records");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class Main {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        List<Integer> recordsList = new ArrayList<>();
+
+        // Example list of 250 records
+        for (int i = 1; i <= 250; i++) {
+            recordsList.add(i);
+        }
+
+        // Create chunks of 100 records
+        List<List<Integer>> chunks = new ArrayList<>();
+        for (int i = 0; i < recordsList.size(); i += 100) {
+            chunks.add(recordsList.subList(i, Math.min(i + 100, recordsList.size())));
+        }
+
+        // List to store the CompletableFuture instances
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        // Iterate over chunks and call method with 10 records
+        for (List<Integer> chunk : chunks) {
+            for (int i = 0; i < chunk.size(); i += 10) {
+                List<Integer> records = chunk.subList(i, Math.min(i + 10, chunk.size()));
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> callMethod(records));
+                futures.add(future);
+            }
+        }
+
+        // Wait for all CompletableFuture instances to complete
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        allFutures.join();
+
+        System.out.println("All methods have been executed.");
+    }
+
+    public static void callMethod(List<Integer> records) {
+        // Your method implementation goes here
+        System.out.println("Calling method with " + records.size() + " records");
+        // Simulating some time-consuming task
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+public class Main {
+    public static void main(String[] args) {
+        List<Integer> recordsList = new ArrayList<>();
+
+        // Example list of 250 records
+        for (int i = 1; i <= 250; i++) {
+            recordsList.add(i);
+        }
+
+        // Create chunks of 100 records
+        List<List<Integer>> chunks = new ArrayList<>();
+        for (int i = 0; i < recordsList.size(); i += 100) {
+            chunks.add(recordsList.subList(i, Math.min(i + 100, recordsList.size())));
+        }
+
+        // Iterate over chunks and call method with 10 records
+        for (List<Integer> chunk : chunks) {
+            for (int i = 0; i < chunk.size(); i += 10) {
+                List<Integer> records = chunk.subList(i, Math.min(i + 10, chunk.size()));
+                callMethod(records);
+            }
+        }
+    }
+
+    public static void callMethod(List<Integer> records) {
+        // Your method implementation goes here
+        System.out.println("Calling method with " + records.size() + " records");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Define a callback interface
+interface ResponseCallback {
+    void onResponse(String response);
+}
+
+// Define a class that performs an asynchronous operation
+class DataFetcher {
+    void fetchData(ResponseCallback callback) {
+        // Simulating an asynchronous operation
+        new Thread(() -> {
+            // Simulating a delay
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            String data = "Data received";
+            callback.onResponse(data); // Call the callback with the response
+        }).start();
+    }
+}
+
+// Create an instance of DataFetcher and call the method with a lambda expression
+DataFetcher dataFetcher = new DataFetcher();
+dataFetcher.fetchData(response -> {
+    // Handle the response here
+    System.out.println("Received response: " + response);
+    // You can call another method or perform additional actions based on the response
+});
+
+m
+
+import java.util.concurrent.CompletableFuture;
+
+class DataFetcher {
+    CompletableFuture<String> fetchData() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        
+        // Simulating an asynchronous operation
+        new Thread(() -> {
+            // Simulating a delay
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            String data = "Data received";
+            future.complete(data); // Complete the CompletableFuture with the response
+        }).start();
+        
+        return future;
+    }
+}
+
+// Create an instance of DataFetcher and call the method
+DataFetcher dataFetcher = new DataFetcher();
+CompletableFuture<String> future = dataFetcher.fetchData();
+
+// Register a callback when the CompletableFuture completes
+future.thenAccept(response -> {
+    // Handle the response here
+    System.out.println("Received response: " + response);
+    // You can call another method or perform additional actions based on the response
+});
+
+// Perform other actions while waiting for the CompletableFuture to complete
+System.out.println("Performing other tasks...");
+
+// Wait for the CompletableFuture to complete (optional)
+future.join();
+
+
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+public class RetryExample {
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 1000;
+
+    public static void main(String[] args) {
+        CompletableFuture<List<Object>> resultFuture = retryMethodCall();
+
+        try {
+            List<Object> resultList = resultFuture.get();
+            if (resultList == null || resultList.isEmpty()) {
+                System.out.println("Retry attempts exhausted. Unable to retrieve results.");
+            } else {
+                System.out.println("Results: " + resultList);
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+
+        // Prevent the main thread from exiting immediately
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static CompletableFuture<List<Object>> retryMethodCall() {
+        CompletableFuture<List<Object>> resultFuture = new CompletableFuture<>();
+
+        callMethod().thenComposeAsync(resultList -> {
+            if (resultList == null || resultList.isEmpty()) {
+                // Retry logic
+                CompletableFuture<List<Object>> retryFuture = new CompletableFuture<>();
+                retryMethodCallHelper(retryFuture, 1);
+                return retryFuture;
+            } else {
+                resultFuture.complete(resultList);
+                return CompletableFuture.completedFuture(resultList);
+            }
+        }).whenComplete((result, throwable) -> {
+            if (throwable != null) {
+                resultFuture.completeExceptionally(throwable);
+            }
+        });
+
+        return resultFuture;
+    }
+
+    private static void retryMethodCallHelper(CompletableFuture<List<Object>> resultFuture, int retryCount) {
+        if (retryCount >= MAX_RETRY_ATTEMPTS) {
+            resultFuture.complete(new ArrayList<>()); // Empty result to indicate retries exhausted
+            return;
+        }
+
+        callMethod().thenComposeAsync(resultList -> {
+            if (resultList == null || resultList.isEmpty()) {
+                try {
+                    Thread.sleep(RETRY_DELAY_MS);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                retryMethodCallHelper(resultFuture, retryCount + 1);
+            } else {
+                resultFuture.complete(resultList);
+            }
+            return CompletableFuture.completedFuture(resultList);
+        });
+    }
+
+    private static CompletableFuture<List<Object>> callMethod() {
+        // Simulating the asynchronous method call
+        CompletableFuture<List<Object>> future = new CompletableFuture<>();
+        // Replace this with your actual method implementation
+
+        // In this example, we complete the future with an empty list
+        // to simulate an empty result
+        future.complete(new ArrayList<>());
+        // In your actual implementation, you would perform the asynchronous operation
+        // and complete the future with the appropriate result
+
+        return future;
+    }
+}
+
+
+
+
+
+
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.RetryPolicy;
+import org.springframework.retry.context.RetryContextSupport;
+
+public class CustomRetryCondition implements RetryPolicy {
+
+    private int maxAttempts;
+    private Class<? extends Throwable> errorCondition;
+
+    public CustomRetryCondition(int maxAttempts, Class<? extends Throwable> errorCondition) {
+        this.maxAttempts = maxAttempts;
+        this.errorCondition = errorCondition;
+    }
+
+    @Override
+    public boolean canRetry(RetryContext context) {
+        Throwable lastThrowable = context.getLastThrowable();
+        return lastThrowable != null && errorCondition.isAssignableFrom(lastThrowable.getClass());
+    }
+
+    @Override
+    public RetryContext open(RetryContext parent) {
+        return new RetryContextSupport(parent);
+    }
+
+    @Override
+    public void close(RetryContext context) {
+        // No-op
+    }
+
+    @Override
+    public void registerThrowable(RetryContext context, Throwable throwable) {
+        // No-op
+    }
+
+    @Override
+    public RetryContext getContext() {
+        return RetryContextSupport.currentRetryContext();
+    }
+}
+
+
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MyService {
+
+    @Retryable(retryPolicy = "customRetryPolicy")
+    public void myMethod() {
+        // Logic of your method goes here
+        // If an exception occurs matching the error condition, the method will be retried
+    }
+}
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.RetryPolicy;
+
+@Configuration
+public class RetryConfiguration {
+
+    @Bean(name = "customRetryPolicy")
+    public RetryPolicy customRetryPolicy() {
+        int maxAttempts = 3;
+        Class<? extends Throwable> errorCondition = MyCustomException.class;
+        return new CustomRetryCondition(maxAttempts, errorCondition);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import net.javacrumbs.shedlock.core.SchedulerLock;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class MyClass {
+
+    @Scheduled(cron = "0 0 0 * * ?") // Schedule the task using Spring's @Scheduled annotation
+    @SchedulerLock(name = "myTaskName") // Apply ShedLock to ensure exclusive execution
+    public void scheduledTask() {
+        CompletableFuture<List<Integer>> future = CompletableFuture.supplyAsync(this::yourMethod);
+        CompletableFuture<List<Integer>> nonEmptyListFuture = future.thenComposeAsync(result -> {
+            if (result == null || result.isEmpty()) {
+                return CompletableFuture.supplyAsync(this::yourMethod);
+            }
+            return CompletableFuture.completedFuture(result);
+        });
+
+        try {
+            List<Integer> result = nonEmptyListFuture.get();
+            System.out.println("List obtained: " + result);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Integer> yourMethod() {
+        // Implement your method here and return a list when ready
+        return null; // Replace with your logic to return the list
+    }
+}
+
+
+
+
+
+
+ hehehje
+
+
+
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+public class MyClass {
+    public static void main(String[] args) {
+        CompletableFuture<List<Integer>> future = CompletableFuture.supplyAsync(MyClass::yourMethod);
+        CompletableFuture<List<Integer>> nonEmptyListFuture = future.thenComposeAsync(result -> {
+            if (result == null || result.isEmpty()) {
+                return CompletableFuture.supplyAsync(MyClass::yourMethod);
+            }
+            return CompletableFuture.completedFuture(result);
+        });
+
+        try {
+            List<Integer> result = nonEmptyListFuture.get();
+            System.out.println("List obtained: " + result);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static List<Integer> yourMethod() {
+        // Implement your method here and return a list when ready
+        return null; // Replace with your logic to return the list
+    }
+}
+
+import java.util.List;
+
+public class MyClass {
+    public static void main(String[] args) {
+        yourMethod(result -> {
+            if (result != null && !result.isEmpty()) {
+                System.out.println("List obtained: " + result);
+            } else {
+                callMethodAgain();
+            }
+        });
+    }
+
+    public static void yourMethod(ResultCallback callback) {
+        // Implement your method here and invoke the callback with the result when ready
+        List<Integer> result = null; // Replace with your logic to obtain the list
+        callback.onResult(result);
+    }
+
+    public static void callMethodAgain() {
+        yourMethod(result -> {
+            if (result != null && !result.isEmpty()) {
+                System.out.println("List obtained: " + result);
+            } else {
+                callMethodAgain();
+            }
+        });
+    }
+
+    interface ResultCallback {
+        void onResult(List<Integer> result);
+    }
+}
+
+
+
+
+
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+        int totalChunks = (int) Math.ceil(objectList.size() / (double) CHUNK_SIZE);
+
+        WebClient webClient = WebClient.create();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(totalChunks);
+
+        List<CompletableFuture<List<Boolean>>> futures = new ArrayList<>();
+
+        for (int i = 0; i < totalChunks; i++) {
+            int startIndex = i * CHUNK_SIZE;
+            int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            CompletableFuture<List<Boolean>> future = CompletableFuture.supplyAsync(() -> {
+                List<Boolean> results = new ArrayList<>();
+                for (Object object : chunk) {
+                    // Send object to WebClient and process the response
+                    Object response = sendToWebClient(webClient, object);
+
+                    // Call another method based on the response and collect the status
+                    boolean status = processResponse(response, object);
+                    results.add(status);
+                }
+                return results;
+            }, executorService);
+
+            futures.add(future);
+        }
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+
+        CompletableFuture<List<Boolean>> combinedFuture = allFutures.thenApply(v -> futures.stream()
+                .flatMap(cf -> cf.join().stream())
+                .collect(Collectors.toList()));
+
+        List<Boolean> allStatus = combinedFuture.join();
+
+        // Perform any further processing with the allStatus list
+
+        executorService.shutdown();
+    }
+
+    private static Object sendToWebClient(WebClient webClient, Object object) {
+        // Code to send object to WebClient and retrieve the response
+        return null; // Replace with your actual logic
+    }
+
+    private static boolean processResponse(Object response, Object object) {
+        // Code to process the response and call another method with the object
+        // Return the status (true or false) based on the response
+        return false; // Replace with your actual logic
+    }
+}
+
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+        int totalChunks = (int) Math.ceil(objectList.size() / (double) CHUNK_SIZE);
+
+        WebClient webClient = WebClient.create();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(totalChunks);
+
+        List<CompletableFuture<List<Object>>> futures = new ArrayList<>();
+
+        for (int i = 0; i < totalChunks; i++) {
+            int startIndex = i * CHUNK_SIZE;
+            int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            CompletableFuture<List<Object>> future = CompletableFuture.supplyAsync(() -> {
+                // Send chunk to WebClient and process the response
+                List<Object> response = sendToWebClient(webClient, chunk);
+
+                // Call another method based on the response and return the result
+                return processResponse(response);
+            }, executorService);
+
+            futures.add(future);
+        }
+
+        CompletableFuture<List<Object>> combinedFuture = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .reduce((first, second) -> second)
+                        .orElse(new ArrayList<>()));
+
+        List<Object> lastResults = combinedFuture.join();
+
+        // Perform any further processing with the last results
+
+        executorService.shutdown();
+    }
+
+    private static List<Object> sendToWebClient(WebClient webClient, List<Object> chunk) {
+        // Code to send chunk to WebClient and retrieve the response
+        return null; // Replace with your actual logic
+    }
+
+    private static List<Object> processResponse(List<Object> response) {
+        // Code to process the response and return the result
+        return response; // Replace with your actual logic
+    }
+}
+
+
+
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+        int totalChunks = (int) Math.ceil(objectList.size() / (double) CHUNK_SIZE);
+
+        WebClient webClient = WebClient.create();
+
+        ExecutorService executorService = Executors.newFixedThreadPool(totalChunks);
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (int i = 0; i < totalChunks; i++) {
+            int startIndex = i * CHUNK_SIZE;
+            int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                // Send chunk to WebClient and process the response
+                List<Object> response = sendToWebClient(webClient, chunk);
+
+                // Call another method based on the response
+                processResponse(response);
+            }, executorService);
+
+            futures.add(future);
+        }
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+
+        // Add any additional processing or waiting as needed
+
+        allFutures.thenRunAsync(() -> {
+            // Perform any final processing or cleanup
+            executorService.shutdown();
+        });
+    }
+
+    private static List<Object> sendToWebClient(WebClient webClient, List<Object> chunk) {
+        // Code to send chunk to WebClient and retrieve the response
+        return null; // Replace with your actual logic
+    }
+
+    private static void processResponse(List<Object> response) {
+        // Code to process the response
+    }
+}
+
+
+jdj     
+
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Example {
+    private static final int CHUNK_SIZE = 10;
+
+    public static void main(String[] args) {
+        List<Object> objectList = /* your list of objects */;
+
+        ExecutorService executorService = Executors.newFixedThreadPool(objectList.size() / CHUNK_SIZE);
+
+        for (int i = 0; i < objectList.size(); i += CHUNK_SIZE) {
+            final int startIndex = i;
+            final int endIndex = Math.min(startIndex + CHUNK_SIZE, objectList.size());
+
+            List<Object> chunk = objectList.subList(startIndex, endIndex);
+
+            executorService.execute(() -> {
+                // Call your method or perform the required operations for the chunk of objects
+                // You can access the chunk of objects through the 'chunk' variable
+            });
+        }
+
+        executorService.shutdown();
+    }
+}
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.List;
+
+// Assuming you have autowired the AmazonS3 client
+
+public class S3MultipartDownloadExample {
+
+    public void downloadObject(String bucketName, String objectKey, String localFilePath, long partSize) {
+        try {
+            // Get the object metadata to determine the content length
+            ObjectMetadata objectMetadata = amazonS3.getObjectMetadata(bucketName, objectKey);
+            long contentLength = objectMetadata.getContentLength();
+
+            long bytesDownloaded = 0;
+            int partNumber = 1;
+
+            FileOutputStream fos = new FileOutputStream(new File(localFilePath));
+
+            while (bytesDownloaded < contentLength) {
+                long partSizeToDownload = Math.min(partSize, (contentLength - bytesDownloaded));
+                GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey)
+                        .withRange(bytesDownloaded, bytesDownloaded + partSizeToDownload - 1);
+
+                S3Object s3Object = amazonS3.getObject(getObjectRequest);
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+
+                while ((bytesRead = s3Object.getObjectContent().read(buffer)) != -1) {
+                    fos.write(buffer, 0, bytesRead);
+                }
+
+                s3Object.getObjectContent().close();
+                bytesDownloaded += partSizeToDownload;
+                partNumber++;
+            }
+
+            fos.close();
+
+        } catch (AmazonServiceException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (AmazonClientException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (IOException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+
+import java.io.File;
+import java.util.List;
+
+// Assuming you have autowired the AmazonS3 client
+
+public class S3MultipartDownloadExample {
+
+    public void downloadObject(String bucketName, String objectKey, String localFilePath) {
+        try {
+            // Get the list of parts for the multipart upload
+            ListPartsRequest listPartsRequest = new ListPartsRequest(bucketName, objectKey, uploadId);
+            PartListing partListing = amazonS3.listParts(listPartsRequest);
+            List<PartSummary> partSummaries = partListing.getParts();
+
+            // Download each part
+            for (PartSummary partSummary : partSummaries) {
+                int partNumber = partSummary.getPartNumber();
+
+                // Download part
+                GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey);
+                getObjectRequest.setPartNumber(partNumber);
+                S3Object s3Object = amazonS3.getObject(getObjectRequest);
+                S3ObjectInputStream inputStream = s3Object.getObjectContent();
+                FileUtils.copyInputStreamToFile(inputStream, new File(localFilePath));
+                inputStream.close();
+            }
+
+            // Combine downloaded parts if necessary
+
+            // Clean up temporary part files
+
+        } catch (AmazonServiceException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (AmazonClientException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (Exception e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        }
+    }
+}
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+
+import java.io.File;
+import java.util.List;
+
+// Assuming you have autowired the AmazonS3 client
+
+public class S3MultipartDownloadExample {
+
+    public void downloadObject(String bucketName, String objectKey, String localFilePath) {
+        try {
+            // Initiate multipart download
+            InitiateMultipartDownloadRequest initiateRequest = new InitiateMultipartDownloadRequest(bucketName, objectKey);
+            InitiateMultipartUploadResult initiateResult = amazonS3.initiateMultipartDownload(initiateRequest);
+            List<PartSummary> partSummaries = initiateResult.getPartSummaries();
+
+            // Download each part
+            for (PartSummary partSummary : partSummaries) {
+                int partNumber = partSummary.getPartNumber();
+
+                // Download part
+                GetObjectRequest getObjectRequest = new GetObjectRequest(bucketName, objectKey);
+                getObjectRequest.setPartNumber(partNumber);
+                S3Object s3Object = amazonS3.getObject(getObjectRequest);
+                S3ObjectInputStream inputStream = s3Object.getObjectContent();
+                FileUtils.copyInputStreamToFile(inputStream, new File(localFilePath));
+                inputStream.close();
+            }
+
+            // Combine downloaded parts if necessary
+
+            // Clean up temporary part files
+
+        } catch (AmazonServiceException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (AmazonClientException e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        } catch (Exception e) {
+            // Handle exceptions appropriately
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+
+
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStre;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
+
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+
+public class TextToSpeech {
+    public static void main(String[] args) throws IOException {
+        // Set up the FreeTTS voice
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Convert text to speech and get the audio output
+        String text = "Hello, world!";
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        AudioFormat audioFormat = new AudioFormat(16000, 16, 1, true, false);
+        DataLine.Info dataLineInfo = new DataLine.Info(SourceDataLine.class, audioFormat);
+        SourceDataLine sourceDataLine;
+        try {
+            sourceDataLine = (SourceDataLine) AudioSystem.getLine(dataLineInfo);
+            sourceDataLine.open(audioFormat);
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+            return;
+        }
+        voice.setAudioPlayer(new JavaSoundAudioPlayer(sourceDataLine));
+        voice.speak(text);
+        sourceDataLine.drain();
+        sourceDataLine.close();
+        byte[] audioBytes = outputStream.toByteArray();
+
+        // Play the audio output
+        AudioInputStream audioInputStreamForPlay = AudioSystem.getAudioInputStream(new ByteArrayInputStream(audioBytes));
+        Clip clip = AudioSystem.getClip();
+        clip.open(audioInputStreamForPlay);
+        clip.start();
+        while (clip.isActive()) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        clip.close();
+
+        // Deallocate the voice resources
+        voice.deallocate();
+    }
+}
+
+class JavaSoundAudioPlayer implements com.sun.speech.freetts.audio.AudioPlayer {
+    private SourceDataLine sourceDataLine;
+
+    public JavaSoundAudioPlayer(SourceDataLine sourceDataLine) {
+        this.sourceDataLine = sourceDataLine;
+    }
+
+    @Override
+    public boolean write(byte[] audioData) {
+        sourceDataLine.write(audioData, 0, audioData.length);
+        return true;
+    }
+
+    @Override
+    public void close() {
+        sourceDataLine.drain();
+    }
+
+    @Override
+    public void reset() {
+    }
+
+    @Override
+    public void startFirstSampleTimer() {
+    }
+
+    @Override
+    public long getTime() {
+        return 0;
+    }
+}
+This code sets up a ByteArrayOutputStream outputStream to capture the audio data generated by the Voice object. It creates an AudioFormat and DataLine.Info to set up a SourceDataLine for playing the audio, and sets an instance of the JavaSoundAudioPlayer class (which implements the com.sun.speech.freetts.audio.AudioPlayer interface) as the audio player for the Voice object.
+
+After the Voice object speaks the text, the SourceDataLine is drained and closed, and the audio data is written to the outputStream.
+
+The audio data is then played using the Clip and AudioSystem.getClip() methods
+
+
+
+
+prashanth.syne@outlook.com
+alternate 
+Here is an alternate solution that uses the MaryTTS library for text-to-speech conversion in Java:
+
+java
+Copy code
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailable
+
+
+
+prashanth.syne@outlook.com
+alternate MaryTTS  with out 
+If you do not wish to use any third-party libraries for text-to-speech conversion in Java, you can use the built-in javax.sound.sampled package to accomplish this task.
+
+Here is an example code that demonstrates this:
+
+java
+Copy code
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.TargetDataLine;
+
+public class TextToSpeech {
+    public static void main(String[] args) {
+        // Set up the text-to-speech parameters
+        String text = "Hello, world!";
+        Voice voice = Voice.FRED;
+        float rate = 120;
+        float pitch = 100;
+        float volume = 1;
+
+        // Convert text to speech
+        try {
+            // Create a new AudioFormat object for the output stream
+            AudioFormat audioFormat = new AudioFormat(16000, 16, 1, true, false);
+
+            // Create a new TargetDataLine object for the output stream
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, audioFormat);
+            TargetDataLine targetDataLine = (TargetDataLine) AudioSystem.getLine(info);
+            targetDataLine.open(audioFormat);
+            targetDataLine.start();
+
+            // Create a new ByteArrayOutputStream object to capture the output stream
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+            // Create a new AudioInputStream object to read the output stream
+            AudioInputStream audioInputStream = new AudioInputStream(targetDataLine);
+
+            // Convert the text to speech using the built-in synthesizer
+            synthesizer = Central.createSynthesizer(null);
+            synthesizer.allocate();
+            synthesizer.resume();
+            synthesizer.getSynthesizerProperties().setVoice(voice);
+            synthesizer.getSynthesizerProperties().setSpeakingRate(rate);
+            synthesizer.getSynthesizerProperties().setPitch(pitch);
+            synthesizer.getSynthesizerProperties().setVolume(volume);
+            synthesizer.speak(text, null);
+            synthesizer.waitEngineState(Synthesizer.QUEUE_EMPTY);
+
+            // Write the captured output stream to the ByteArrayOutputStream object
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = audioInputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+
+            // Close the ByteArrayOutputStream and AudioInputStream objects
+            outputStream.close();
+            audioInputStream.close();
+
+            // Play the output stream using the Clip object
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+            AudioInputStream audioInput = AudioSystem.getAudioInputStream(inputStream);
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioInput);
+            clip.start();
+            Thread.sleep(clip.getMicrosecondLength() / 1000);
+        } catch (IOException | LineUnavailableException | InterruptedException | UnsupportedAudioFileException | SynthesisException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.TargetDataLine;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.Mixer;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.sound.sampled.AudioSystem;
+
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try {
+            // Create a temporary file to store the voice data
+            AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
+            java.io.File tempFile = java.io.File.createTempFile("voice", "." + fileType.getExtension());
+
+            // Synthesize the text to speech and save it to the temporary file
+            voice.setAudioFileFormat(fileType);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+
+            // Read the voice data from the temporary file
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(tempFile);
+            voiceBytes = new byte[(int)(audioInputStream.getFrameLength() * audioFormat.getFrameSize())];
+            audioInputStream.read(voiceBytes);
+            audioInputStream.close();
+            tempFile.delete();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+import com.sun.speech.freetts.audio.AudioPlayer;
+import com.sun.speech.freetts.audio.JavaStreamingAudioPlayer;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+             AudioPlayer audioPlayer = new JavaStreamingAudioPlayer(audioFormat, out)) {
+            voice.setAudioPlayer(audioPlayer);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+            voice.deallocate();
+            audioPlayer.close();
+            voiceBytes = out.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+import com.sun.speech.freetts.audio.AudioPlayer;
+import com.sun.speech.freetts.audio.JavaStreamingAudioPlayer;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+             AudioPlayer audioPlayer = new JavaStreamingAudioPlayer(audioFormat, out)) {
+            voice.setAudioPlayer(audioPlayer);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+            voice.deallocate();
+            audioPlayer.close();
+            voiceBytes = out.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import com.sun.speech.freetts.Voice;
+import com.sun.speech.freetts.VoiceManager;
+import com.sun.speech.freetts.audio.AudioPlayer;
+import com.sun.speech.freetts.audio.JavaStreamingAudioPlayer;
+
+public class TextToVoice {
+    public static void main(String[] args) {
+        // Set up the voice manager
+        VoiceManager voiceManager = VoiceManager.getInstance();
+        Voice voice = voiceManager.getVoice("kevin16");
+        voice.allocate();
+
+        // Set up the audio format
+        AudioFormat audioFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                16000.0f, 16, 2, 4, 16000.0f, false);
+
+        // Convert text to voice bytes
+        byte[] voiceBytes = null;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+             AudioPlayer audioPlayer = new JavaStreamingAudioPlayer(audioFormat, out)) {
+            voice.setAudioPlayer(audioPlayer);
+            voice.setAudioFormat(audioFormat);
+            voice.setVolume(1.0f);
+            voice.setPitch(120.0f);
+            voice.setRate(150.0f);
+            voice.speak("Hello, world!");
+            voice.waitEngineState(Voice.QUEUE_EMPTY);
+            voice.deallocate();
+            audioPlayer.close();
+            voiceBytes = out.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Use the voice bytes as needed
+        System.out.println("Voice bytes length: " + voiceBytes.length);
+    }
+}
+
+import com.google.cloud.texttospeech.v1.AudioConfig;
+import com.google.cloud.texttospeech.v1.AudioEncoding;
+import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
+import com.google.cloud.texttospeech.v1.SynthesisInput;
+import com.google.cloud.texttospeech.v1.SynthesizeSpeechResponse;
+import com.google.cloud.texttospeech.v1.TextToSpeechClient;
+import com.google.cloud.texttospeech.v1.VoiceSelectionParams;
+import com.google.protobuf.ByteString;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+
+
+
+
+
+String str = "convert this string to camel case";
+String[] words = str.split(" ");
+
+StringBuilder sb = new StringBuilder(words[0].toLowerCase());
+for (int i = 1; i < words.length; i++) {
+    String word = words[i];
+    sb.append(word.substring(0, 1).toUpperCase());
+    sb.append(word.substring(1).toLowerCase());
+}
+
+String camelCaseStr = sb.toString();
+System.out.println(camelCaseStr);
+
+heh
+
+
+
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
