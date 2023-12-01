@@ -1,3 +1,48 @@
+Here are some key concepts related to Kubernetes clusters:
+
+Node:
+
+A node is a physical or virtual machine that serves as part of the Kubernetes cluster.
+Nodes can run multiple containers, and each node runs an agent called Kubelet, which communicates with the control plane.
+Control Plane:
+
+The control plane is the set of components that manage and control the Kubernetes cluster.
+Key components include the Kubernetes API server, etcd (distributed key-value store for configuration data), controller manager, and scheduler.
+Pod:
+
+The smallest and simplest unit in the Kubernetes object model.
+A pod represents a single instance of a running process in a cluster and can contain one or more containers that share the same network namespace.
+Deployment:
+
+A Kubernetes resource that allows you to declaratively manage a set of replica pods.
+Deployments enable you to easily scale and update applications.
+Service:
+
+A Kubernetes resource that provides a stable endpoint to access one or more pods.
+Services enable network communication between different parts of an application.
+Namespace:
+
+A way to divide cluster resources between multiple users or teams.
+Namespaces help organize and manage resources within a cluster.
+Kubeconfig:
+
+A file that specifies how to connect to a Kubernetes cluster.
+It includes details such as the cluster's API server, user information, and authentication details.
+Cluster Autoscaler:
+
+A component that automatically adjusts the size of the cluster to meet the demand.
+It can scale nodes up or down based on resource usage and constraints.
+Ingress:
+
+An API object that manages external access to services within a cluster.
+It allows you to define how external traffic should be routed to services.
+Persistent Volume (PV) and Persistent Volume Claim (PVC):
+
+PV represents a physical storage resource in the cluster.
+PVC is a request for storage by a user or a pod.
+PVCs consume PVs, providing a way to decouple storage from the pod lifecycle.
+
+
 NAS (Network Attached Storage):
 
 NAS is a type of storage solution where a file-level storage device is connected to a network.
