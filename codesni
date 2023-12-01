@@ -1,3 +1,30 @@
+NAS (Network Attached Storage):
+
+NAS is a type of storage solution where a file-level storage device is connected to a network.
+It allows multiple servers or clients to access the stored data concurrently.
+In Kubernetes, NAS can be used as a storage backend for applications running within the cluster.
+PV (Persistent Volume):
+
+PV in Kubernetes represents a piece of storage in the cluster that has been provisioned by an administrator.
+It is a resource in the cluster just like a node is a cluster resource.
+PVs can be used by pods, but they are not bound to a specific pod.
+PVC (Persistent Volume Claim):
+
+PVC is a request for storage by a user. It's a way to claim a PV for a particular use.
+When a pod needs access to persistent storage, it makes a request via a PVC.
+The administrator can then bind the PVC to a specific PV, providing the requested storage.
+Here's how they might work together:
+
+An administrator creates a Persistent Volume (PV) representing the available storage, which could be backed by NAS.
+A user or developer then creates a Persistent Volume Claim (PVC), specifying the storage requirements.
+The Kubernetes system matches the PVC with an appropriate available PV (possibly backed by NAS), binding them together.
+The user's pod can then use the PVC as a volume to store and retrieve data.
+This setup allows for dynamic provisioning, where the cluster can automatically provision storage as needed based on PVC requests.
+
+Remember that specific configurations and features can vary based on the storage provider and the Kubernetes setup. Always refer to the documentation for the particular NAS solution and Kubernetes version you are using.
+
+
+
 <dependency>
     <groupId>org.apache.curator</groupId>
     <artifactId>curator-framework</artifactId>
