@@ -1,3 +1,38 @@
+
+If you have a Kubernetes cluster with two pods, and you want only one of those pods to send emails, you can achieve this by designing your application or service to incorporate logic that determines which pod is responsible for sending emails. For example, you could use labels, annotations, or environment variables to mark the pod that should handle email sending.
+
+Here's a simplified example in pseudocode:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-1
+  labels:
+    email-sender: "true"
+spec:
+  containers:
+  - name: your-app
+    image: your-image
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-2
+  labels:
+    email-sender: "false"
+spec:
+  containers:
+  - name: your-app
+    image: your-image
+```
+
+In your application logic, check the label or environment variable to determine whether the pod should send emails. If the label or variable is set to "true," allow email sending; otherwise, skip it.
+
+This way, you have control over which pod is responsible for the email-sending functionality within the same cluster. Adjust the example based on your application's requirements and the language or framework you are using.
+
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
