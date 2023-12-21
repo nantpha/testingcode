@@ -1,3 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-sender-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: email-sender
+  template:
+    metadata:
+      labels:
+        app: email-sender
+    spec:
+      containers:
+      - name: email-sender-container
+        image: your-email-sender-image:tag
+        env:
+        - name: SMTP_SERVER
+          value: smtp.example.com
+        - name: SMTP_PORT
+          value: "587"
+        - name: SMTP_USERNAME
+          value: your_username
+        - name: SMTP_PASSWORD
+          value: your_password
+
 apiVersion: v1
 kind: Pod
 metadata:
