@@ -1,4 +1,72 @@
 
+
+If you want to ensure that email sending occurs from only one specific pod, you can use various approaches. Here's a simple way using ConfigMap to configure which pod should handle the email sending:
+
+1. **Create a ConfigMap:**
+   Create a ConfigMap that designates one of the pods as the email sender. Here's an example:
+
+   ```yaml
+   apiVersion: v1
+   kind: ConfigMap
+   metadata:
+     name: email-sender-config
+   data:
+     SENDER_POD: "pod-1"  # Specify the name of the pod that will send emails
+   ```
+
+2. **Update Deployment Manifest:**
+   Modify your Deployment manifest to use the ConfigMap to determine which pod will handle email sending. Add an environment variable to your pod specification:
+
+   ```yaml
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: email-sender-deployment
+   spec:
+     replicas: 2
+     selector:
+       matchLabels:
+         app: email-sender
+     template:
+       metadata:
+         labels:
+           app: email-sender
+       spec:
+         containers:
+         - name: email-sender-container
+           image: your-email-sender-image:tag
+           env:
+           - name: SMTP_SERVER
+             value: smtp.example.com
+           - name: SMTP_PORT
+             value: "587"
+           - name: SMTP_USERNAME
+             value: your_username
+           - name: SMTP_PASSWORD
+             value: your_password
+           - name: SENDER_POD
+             valueFrom:
+               configMapKeyRef:
+                 name: email-sender-config
+                 key: SENDER_POD
+   ```
+
+   This way, each pod reads the `SENDER_POD` value from the ConfigMap, and only the pod specified in the ConfigMap will send emails.
+
+3. **Deploy ConfigMap and Deployment:**
+   Apply the ConfigMap and Deployment to your cluster:
+
+   ```bash
+   kubectl apply -f your-configmap.yaml
+   kubectl apply -f your-deployment-manifest.yaml
+   ```
+
+Ensure that the `SENDER_POD` value in the ConfigMap matches the name of the pod you want to handle email sending.
+
+This approach provides a simple way to control which pod takes on the responsibility of sending emails.
+
+
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
