@@ -1,3 +1,14 @@
+
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: email-sender-config
+data:
+  SENDER_POD: "pod-1"  # Specify the name of the pod that will send emails
+
+
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
