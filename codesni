@@ -1,5 +1,9 @@
 
 
+... | rex field=_raw "Employee first=(?<first>[^,]+), last=(?<last>[^,]+), date=(?<date>[^,]+), fun=(?<fun>[^ ]+)"
+| table first, last, date, fun
+
+
 If you want to ensure that email sending occurs from only one specific pod, you can use various approaches. Here's a simple way using ConfigMap to configure which pod should handle the email sending:
 
 1. **Create a ConfigMap:**
