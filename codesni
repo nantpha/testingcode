@@ -1,3 +1,22 @@
+However, keep in mind the following considerations:
+
+Parallelism vs. Concurrency: While Schedulers.parallel() provides parallelism, it doesn't necessarily imply concurrency for I/O-bound tasks. For I/O-bound tasks like WebClient requests, you might want to use a scheduler optimized for I/O, such as Schedulers.elastic().
+
+Number of Threads: Schedulers.parallel() creates a fixed number of threads based on the number of available processors. Ensure that this number aligns with the number of concurrent connections your application can handle.
+
+Connection Pooling: WebClient itself already uses a connection pool under the hood. Adjusting the parallelism should be done with consideration for the underlying WebClient behavior.
+
+Load Testing: Test and measure the performance of your application under load to determine the optimal configuration for your specific use case.
+
+As always, the choice of scheduler depends on the nature of your workload and the characteristics of the tasks being performed. Consider running performance tests with different schedulers and configurations to find the most suitable setup for your application.
+
+
+
+
+
+
+
+
 If you're encountering the "pending acquire queue has reached its max size of 1000" issue specifically with WebClient, it's likely related to how WebClient manages connections and concurrency. Here are some steps to address the issue:
 
 1. **Connection Pool Configuration:**
