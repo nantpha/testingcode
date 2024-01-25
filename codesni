@@ -1387,7 +1387,51 @@ public class BufferedFileWriter {
 
 
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
+public class ParallelExecutionExample {
+
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+        int threadCount = 1000;
+
+        // Create a fixed thread pool
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+
+        // List to hold CompletableFuture instances
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+
+        // Run methods in parallel using CompletableFuture and the fixed thread pool
+        for (int i = 0; i < threadCount; i++) {
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> method(), executorService);
+            futures.add(future);
+        }
+
+        // Wait for all CompletableFuture instances to complete
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        allOf.get(); // Block and wait for completion
+
+        // Retrieve results
+        for (int i = 0; i < threadCount; i++) {
+            String result = futures.get(i).get();
+            System.out.println("Result from Thread " + i + ": " + result);
+        }
+
+        // Shutdown the executor service
+        executorService.shutdown();
+    }
+
+    private static String method() {
+        // Simulate a time-consuming task
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "Result from Method";
+    }
+}
 
 
 
