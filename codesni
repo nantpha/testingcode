@@ -1,3 +1,83 @@
+If you're encountering the "pending acquire queue has reached its max size of 1000" issue specifically with WebClient, it's likely related to how WebClient manages connections and concurrency. Here are some steps to address the issue:
+
+1. **Connection Pool Configuration:**
+   - Review and adjust the configuration of your WebClient's connection pool. You can set the maximum number of connections and other related parameters.
+
+```java
+WebClient webClient = WebClient.builder()
+        .clientConnector(new ReactorClientHttpConnector(
+                HttpClient.create()
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000) // Set your timeout
+                        .poolResources(PoolResources.fixed("custom", 2000)) // Set your max connections
+        ))
+        .build();
+```
+
+In the example above, `PoolResources.fixed("custom", 2000)` sets the maximum number of connections to 2000. Adjust the values according to your application's requirements.
+
+2. **Error Handling:**
+   - Ensure that you handle errors properly when using WebClient. Unhandled errors may lead to resource leaks.
+
+```java
+webClient.post()
+        .uri(url)
+        .retrieve()
+        .onStatus(HttpStatus::isError, clientResponse ->
+            Mono.error(new RuntimeException("Request failed with status code: " + clientResponse.statusCode()))
+        )
+        .bodyToMono(String.class)
+        .block();
+```
+
+In this example, `onStatus` is used to handle error responses, ensuring that resources are properly released.
+
+3. **Reactive Backpressure:**
+   - Ensure that you're handling reactive backpressure appropriately, especially if you have a large number of requests. Backpressure allows the application to handle a large number of incoming requests without overwhelming the system.
+
+```java
+webClient.post()
+        .uri(url)
+        .body(BodyInserters.fromValue(requestBody))
+        .retrieve()
+        .bodyToMono(String.class)
+        .subscribeOn(Schedulers.elastic())
+        .publishOn(Schedulers.elastic())
+        .subscribe();
+```
+
+The use of `subscribeOn` and `publishOn` helps control the threading and can prevent overwhelming the system with too many requests.
+
+4. **Throttling:**
+   - Implement throttling mechanisms if needed. Throttling can help control the rate of requests and prevent the system from being flooded.
+
+```java
+Flux.interval(Duration.ofMillis(100)) // Throttle requests to every 100 milliseconds
+        .flatMap(i -> webClient.post()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class))
+        .subscribe();
+```
+
+Adjust the interval based on your application's needs.
+
+5. **Logging and Monitoring:**
+   - Enable detailed logging and monitoring to observe WebClient behavior, especially during load testing. Look for any patterns or issues in the logs.
+
+```java
+LoggingHandler loggingHandler = new LoggingHandler("reactor.netty.http.client.HttpClient", LogLevel.INFO, LoggingHandler.OutputFormat.SIMPLE);
+HttpClient httpClient = HttpClient.create().doOnRequest(loggingHandler).doOnResponse(loggingHandler);
+
+WebClient webClient = WebClient.builder()
+        .clientConnector(new ReactorClientHttpConnector(httpClient))
+        .build();
+```
+
+This example adds a logging handler to the HttpClient to log requests and responses. Adjust the log level and format based on your requirements.
+
+Remember to fine-tune these configurations based on your specific application needs, and consider load testing with gradually increasing loads to identify the optimal settings for your use case.
+
+
 If you need to handle a large number of connections efficiently, you might want to consider using a connection pool. In a reactive environment with Spring WebFlux, the `ConnectionProvider` plays a key role in managing connection pooling.
 
 Here's an example of how you can use `ConnectionProvider` to handle a large number of connections:
