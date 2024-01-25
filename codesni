@@ -1,4 +1,74 @@
 
+If you're experiencing the issue of the "ending acquire queue" reaching its maximum size, it may be related to how the reactive streams are being handled. The issue is likely because reactive streams like Mono and Flux create a chain of operators and these operators need to be properly handled to prevent resource leaks.
+
+Here's an adjusted example using Mono.usingWhen and Mono.defer to make sure resources are released properly:
+
+java
+Copy code
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+import java.time.Duration;
+
+public class RetryWebClientExample {
+
+    public static void main(String[] args) {
+        String url = "your_api_endpoint_here";
+        int maxRetries = 3;
+
+        retryWebClientPost(url, maxRetries);
+    }
+
+    public static void retryWebClientPost(String url, int maxRetries) {
+        WebClient webClient = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.newConnection()
+                        .compress(true)
+                        .followRedirect(true)))
+                .build();
+
+        Mono<ClientResponse> responseMono = Mono.usingWhen(
+                Mono.defer(() ->
+                        webClient.post()
+                                .uri(url)
+                                .bodyValue("your_request_body_here")
+                                .timeout(Duration.ofSeconds(30)) // Adjust the timeout as needed
+                                .exchange()
+                                .subscribeOn(Schedulers.parallel()) // Offload to a parallel thread pool
+                ),
+                ClientResponse::bodyToMono,
+                (response, throwable) -> {
+                    // Cleanup resources if needed
+                    return Mono.empty();
+                }
+        );
+
+        responseMono
+                .doOnSuccess(clientResponse -> {
+                    if (clientResponse.statusCode().is2xxSuccessful()) {
+                        // Process the successful response
+                        System.out.println("Request successful");
+                    } else {
+                        // Handle non-successful response (e.g., log, retry, etc.)
+                        System.out.println("Request failed with status code: " + clientResponse.statusCode());
+                    }
+                })
+                .doOnError(throwable -> {
+                    // Handle exceptions (e.g., log, retry, etc.)
+                    System.out.println("Request failed with exception: " + throwable.getMessage());
+                })
+                .retryBackoff(maxRetries, Duration.ofSeconds(1))
+                .block(); // Blocking call to wait for the response
+    }
+}
+This example uses Mono.usingWhen to ensure that resources are properly handled, and Mono.defer to defer the creation of the Mono until it is subscribed to. This can help prevent resource leaks and issues with the acquire queue reaching its maximum size. Adjust this based on your specific application needs.
+
+
+
+
+
+
 
 ... | rex field=_raw "Employee first=(?<first>[^,]+), last=(?<last>[^,]+), date=(?<date>[^,]+), fun=(?<fun>[^ ]+)"
 | table first, last, date, fun
