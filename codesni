@@ -1,3 +1,134 @@
+If you need to handle a large number of connections efficiently, you might want to consider using a connection pool. In a reactive environment with Spring WebFlux, the `ConnectionProvider` plays a key role in managing connection pooling.
+
+Here's an example of how you can use `ConnectionProvider` to handle a large number of connections:
+
+```java
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
+import reactor.netty.resources.LoopResources;
+
+import java.time.Duration;
+
+public class LargeConnectionPoolExample {
+
+    public static void main(String[] args) {
+        String url = "your_api_endpoint_here";
+        int maxConnections = 10000;
+
+        WebClient webClient = createWebClient(maxConnections);
+
+        performRequests(webClient, url);
+    }
+
+    private static WebClient createWebClient(int maxConnections) {
+        ConnectionProvider connectionProvider = ConnectionProvider.create("custom", maxConnections);
+        LoopResources loopResources = LoopResources.create("custom", maxConnections, true);
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(
+                        HttpClient.create(connectionProvider)
+                                .compress(true)
+                                .followRedirect(true)
+                                .responseTimeout(Duration.ofSeconds(30)) // Adjust the timeout as needed
+                                .loopResources(loopResources)
+                ))
+                .build();
+    }
+
+    private static void performRequests(WebClient webClient, String url) {
+        // Example request
+        for (int i = 0; i < 1000; i++) {
+            Mono<ClientResponse> responseMono = webClient.get()
+                    .uri(url)
+                    .exchange();
+
+            responseMono
+                    .doOnNext(clientResponse -> {
+                        // Process the successful response
+                        System.out.println("Request successful. Response: " + clientResponse);
+                    })
+                    .doOnError(throwable -> {
+                        // Handle exceptions (e.g., log, retry, etc.)
+                        System.out.println("Request failed with exception: " + throwable.getMessage());
+                    })
+                    .block(); // Blocking call to wait for the response
+        }
+    }
+}
+```
+
+In this example:
+
+- `ConnectionProvider.create("custom", maxConnections)` is used to create a custom connection provider with a maximum number of connections (`maxConnections`).
+- `LoopResources.create("custom", maxConnections, true)` creates a custom `LoopResources` with the same name and maximum connections. The third parameter (`daemon`) is set to `true` to indicate that the underlying resources are daemon resources.
+- `HttpClient.create(connectionProvider)` configures the `HttpClient` with the custom `ConnectionProvider` and `LoopResources`.
+- The `performRequests` method demonstrates making multiple requests using the configured `WebClient`.
+
+Please replace `"your_api_endpoint_here"` with your actual API endpoint. Adjust the parameters, such as `maxConnections`, based on your specific requirements and resource constraints.
+
+
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+
+import java.time.Duration;
+
+public class RetryWebClientExample {
+
+    public static void main(String[] args) {
+        String url = "your_api_endpoint_here";
+        int maxRetries = 3;
+
+        retryWebClientPost(url, maxRetries);
+    }
+
+    public static void retryWebClientPost(String url, int maxRetries) {
+        // Custom ConnectionProvider with custom HttpClient
+        WebClient webClient = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(
+                        HttpClient.newConnection()
+                                .compress(true)
+                                .followRedirect(true)
+                                .responseTimeout(Duration.ofSeconds(30)) // Adjust the timeout as needed
+                                .doOnConnected(conn -> conn.addHandlerLast(new CustomLoggingHandler())) // Optional: Add custom handlers
+                ))
+                .build();
+
+        Mono<ClientResponse> responseMono = Mono.defer(() ->
+                webClient.post()
+                        .uri(url)
+                        .bodyValue("your_request_body_here")
+                        .exchange()
+                        .flatMap(response -> {
+                            if (response.statusCode().is2xxSuccessful()) {
+                                return Mono.just(response);
+                            } else {
+                                return Mono.error(new RuntimeException("Request failed with status code: " + response.statusCode()));
+                            }
+                        })
+        );
+
+        responseMono
+                .retryBackoff(maxRetries, Duration.ofSeconds(1))
+                .doOnNext(clientResponse -> {
+                    // Process the successful response
+                    System.out.println("Request successful. Response: " + clientResponse);
+                })
+                .doOnError(throwable -> {
+                    // Handle exceptions (e.g., log, retry, etc.)
+                    System.out.println("Request failed with exception: " + throwable.getMessage());
+                })
+                .blockLast(); // Blocking call to wait for the last response
+    }
+}
+
+
 
 If you're experiencing the issue of the "ending acquire queue" reaching its maximum size, it may be related to how the reactive streams are being handled. The issue is likely because reactive streams like Mono and Flux create a chain of operators and these operators need to be properly handled to prevent resource leaks.
 
