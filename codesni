@@ -1,4 +1,22 @@
 
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class TomcatConfig {
+
+    @Bean
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
+        return factory -> factory.addConnectorCustomizers(connector -> {
+            connector.setMaxThreads(50); // Adjust the number of threads as needed
+        });
+    }
+}
+
+
+
 Using `Schedulers.parallel()` can be a reasonable choice for parallelizing the processing of elements in a reactive stream and managing backpressure. However, it's important to understand the characteristics of `parallel()` and consider the implications for your specific use case.
 
 `Schedulers.parallel()` provides a parallel scheduler that is designed for CPU-bound tasks. It creates a fixed pool of worker threads based on the number of available processors. Each parallel worker thread can handle a separate stream of elements, allowing for parallel processing.
