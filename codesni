@@ -1,4 +1,10 @@
 
+
+-Dcom.sun.management.jmxremote
+-Dcom.sun.management.jmxremote.port=PORT_NUMBER
+-Dcom.sun.management.jmxremote.ssl=false
+-Dcom.sun.management.jmxremote.authenticate=false
+
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
