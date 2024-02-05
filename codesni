@@ -1,3 +1,39 @@
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.functions;
+
+public class SparkSpringBootApplication {
+
+    public static void main(String[] args) {
+        // Create a Spark session
+        SparkSession spark = SparkSession.builder().appName("SparkSpringBootApp").master("local").getOrCreate();
+
+        // Assuming you already have a dataset called 'existingDataset'
+        Dataset<Row> existingDataset = ... // Your existing dataset
+
+        // Map 'p' to 'success' and 'f' to 'fail'
+        Dataset<Row> mappedDataset = existingDataset.withColumn("status",
+                functions.when(existingDataset.col("value").equalTo("p"), "success")
+                        .when(existingDataset.col("value").equalTo("f"), "fail")
+        );
+
+        // Filter rows where status is 'success'
+        Dataset<Row> filteredData = mappedDataset.filter(mappedDataset.col("status").equalTo("success"));
+
+        // Pivot the table and count occurrences
+        Dataset<Row> pivotedDataset = filteredData.groupBy("id")
+                .pivot("key")
+                .agg(functions.count("key").alias("success_count"))
+                .na().fill(0);
+
+        // Show the pivoted DataFrame
+        pivotedDataset.show();
+
+        // Stop Spark session
+        spark.stop();
+    }
+}
 import org.springframework.stereotype.Service;
 import java.lang.reflect.Field;
 import java.util.List;
