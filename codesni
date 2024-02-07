@@ -1,3 +1,50 @@
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.util.IOUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.io.InputStream;
+
+public class S3JsonRetriever {
+
+    public static void main(String[] args) {
+        // Replace these values with your actual AWS credentials
+        String accessKeyId = "YOUR_ACCESS_KEY_ID";
+        String secretAccessKey = "YOUR_SECRET_ACCESS_KEY";
+
+        // Initialize S3 client
+        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                .withRegion("YOUR_S3_REGION")
+                .build();
+
+        // Retrieve JSON object from S3
+        String bucketName = "YOUR_BUCKET_NAME";
+        String objectKey = "path/to/your/object.json";
+
+        S3Object s3Object = s3Client.getObject(new GetObjectRequest(bucketName, objectKey));
+
+        // Parse JSON object
+        try (InputStream inputStream = s3Object.getObjectContent()) {
+            String jsonContent = IOUtils.toString(inputStream);
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(jsonContent);
+
+            // Now you can work with the JSON object
+            System.out.println("JSON Object: " + jsonNode);
+        } catch (IOException e) {
+            System.err.println("Error retrieving JSON object: " + e.getMessage());
+        }
+    }
+}
+
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
