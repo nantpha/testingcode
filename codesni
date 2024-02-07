@@ -1,4 +1,36 @@
 
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
+
+public class S3ObjectDeleter {
+
+    public static void main(String[] args) {
+        // Replace these values with your actual AWS credentials
+        String accessKeyId = "YOUR_ACCESS_KEY_ID";
+        String secretAccessKey = "YOUR_SECRET_ACCESS_KEY";
+
+        // Initialize S3 client
+        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                .withRegion("YOUR_S3_REGION")
+                .build();
+
+        // Delete object from S3
+        String bucketName = "YOUR_BUCKET_NAME";
+        String objectKey = "path/to/your/object.json";
+
+        s3Client.deleteObject(new DeleteObjectRequest(bucketName, objectKey));
+
+        System.out.println("Object deleted successfully.");
+    }
+}
+
+
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
