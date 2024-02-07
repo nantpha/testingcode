@@ -1,4 +1,44 @@
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.ByteArrayInputStream;
+
+public class S3ObjectUploader {
+
+    public static void main(String[] args) {
+        // Replace these values with your actual AWS credentials
+        String accessKeyId = "YOUR_ACCESS_KEY_ID";
+        String secretAccessKey = "YOUR_SECRET_ACCESS_KEY";
+
+        // Initialize S3 client
+        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                .withRegion("YOUR_S3_REGION")
+                .build();
+
+        // Serialize Java object to JSON
+        YourObject yourObject = new YourObject(); // Replace YourObject with your actual class
+        ObjectMapper objectMapper = new ObjectMapper();
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(yourObject);
+        } catch (Exception e) {
+            System.err.println("Error serializing object to JSON: " + e.getMessage());
+            return;
+        }
+
+        // Upload JSON object to S3
+        String bucketName = "YOUR_BUCKET_NAME";
+        String objectKey = "path/to/your/object.json";
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(json.getBytes());
+        s3Client.putObject(bucketName, objectKey, inputStream, null);
+        System.out.println("Object uploaded successfully.");
+    }
+}
 
 1. **Network Latency**:
 Optimize network infrastructure, consider using content delivery networks (CDNs), or use techniques like caching at the edge to reduce latency.
