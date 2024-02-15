@@ -1,4 +1,22 @@
+import java.awt.AWTException;
+import java.awt.Robot;
+import java.awt.event.InputEvent;
 
+public class PreventScreenLock {
+    public static void main(String[] args) {
+        try {
+            Robot robot = new Robot();
+            
+            // Move mouse to prevent screen lock
+            while (true) {
+                robot.mouseMove(0, 0); // Move mouse to top-left corner
+                Thread.sleep(60000); // Wait for 1 minute
+            }
+        } catch (AWTException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
 Yes, that's correct. In a Kubernetes environment, the `process_files_open_files` metric typically represents the number of files that are currently open by processes running within Kubernetes pods. These files can include things like log files, configuration files, and other resources that the processes are accessing or managing. Monitoring this metric can help in understanding the file handling behavior and potential resource constraints within Kubernetes pods.
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
