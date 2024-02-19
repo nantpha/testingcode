@@ -1,3 +1,47 @@
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+public class CompletableFutureWithRetry {
+    public static void main(String[] args) {
+        CompletableFuture<Void> future = retry(() -> someMethod(), 3, 1000);
+        future.thenRun(() -> System.out.println("Operation completed successfully"))
+                .exceptionally(ex -> {
+                    System.out.println("Operation failed: " + ex.getMessage());
+                    return null;
+                });
+    }
+
+    public static CompletableFuture<Void> retry(Supplier<CompletableFuture<Void>> action, int maxAttempts, long delayMillis) {
+        return CompletableFuture.supplyAsync(action)
+                .handle((result, throwable) -> {
+                    if (throwable != null) {
+                        System.out.println("Exception caught: " + throwable.getMessage());
+                        if (maxAttempts > 0) {
+                            System.out.println("Retrying...");
+                            return retry(action, maxAttempts - 1, delayMillis);
+                        } else {
+                            return CompletableFuture.completedFuture(null);
+                        }
+                    } else {
+                        return CompletableFuture.completedFuture(result);
+                    }
+                }).thenComposeAsync(cf -> cf);
+    }
+
+    public static CompletableFuture<Void> someMethod() {
+        // Simulating a method that may throw an exception intermittently
+        if (Math.random() < 0.8) {
+            System.out.println("Exception occurred...");
+            throw new RuntimeException("Exception occurred");
+        } else {
+            System.out.println("Method succeeded!");
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+}
+
+
 import java.awt.AWTException;
 import java.awt.Robot;
 import java.awt.event.InputEvent;
