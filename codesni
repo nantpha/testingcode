@@ -1,3 +1,54 @@
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+public class CompletableFutureWithRetry {
+    public static void main(String[] args) {
+        CompletableFuture<Void> future = retry(() -> {
+            someVoidMethod();
+            return null; // Since someVoidMethod returns void, we return null here
+        }, 3, 1000);
+        
+        future.thenRun(() -> System.out.println("Operation completed successfully"))
+                .exceptionally(ex -> {
+                    System.out.println("Operation failed: " + ex.getMessage());
+                    return null;
+                });
+    }
+
+    public static CompletableFuture<Void> retry(Supplier<Void> action, int maxAttempts, long delayMillis) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                action.get(); // Execute the action
+                return CompletableFuture.completedFuture(null); // Return completed future if successful
+            } catch (Exception e) {
+                if (maxAttempts > 0) {
+                    System.out.println("Retrying...");
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(delayMillis); // Wait for the specified delay before retrying
+                    } catch (InterruptedException interruptedException) {
+                        Thread.currentThread().interrupt(); // Restore interrupted status
+                    }
+                    return retry(action, maxAttempts - 1, delayMillis); // Retry recursively
+                } else {
+                    return CompletableFuture.completedFuture(null); // Return completed future if max attempts reached
+                }
+            }
+        }).thenComposeAsync(cf -> cf);
+    }
+
+    public static void someVoidMethod() {
+        // Simulating a void method that may throw an exception intermittently
+        if (Math.random() < 0.8) {
+            System.out.println("Exception occurred...");
+            throw new RuntimeException("Exception occurred");
+        } else {
+            System.out.println("Method succeeded!");
+        }
+    }
+}
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
