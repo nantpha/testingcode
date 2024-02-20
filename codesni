@@ -1,3 +1,49 @@
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+public class Main {
+    public static void main(String[] args) {
+        CompletableFuture<Boolean> future = retryWithReturnValue(3); // Retry 3 times
+
+        future.thenAccept(result -> {
+            if (result) {
+                System.out.println("Method returned true.");
+            } else {
+                System.out.println("Method returned false after retries.");
+            }
+        }).exceptionally(ex -> {
+            System.err.println("Failed to execute method: " + ex);
+            return null;
+        });
+    }
+
+    public static CompletableFuture<Boolean> retryWithReturnValue(int retries) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return myMethod();
+            } catch (Exception e) {
+                if (retries > 0) {
+                    System.out.println("Retry " + (4 - retries) + " due to exception: " + e.getMessage());
+                    return retryWithReturnValue(retries - 1).join();
+                } else {
+                    throw new RuntimeException("Maximum retries exceeded", e);
+                }
+            }
+        });
+    }
+
+    // Example method returning a boolean value
+    public static boolean myMethod() {
+        // Simulate some operation
+        if (Math.random() < 0.5) {
+            throw new RuntimeException("Operation failed randomly");
+        }
+        // Simulate returning false
+        return false;
+    }
+}
+
+
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
