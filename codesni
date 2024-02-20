@@ -1,3 +1,29 @@
+import java.util.Optional;
+
+public class Main {
+    public static void main(String[] args) {
+        String str = null; // or any other value
+        
+        // Using Optional to check for null
+        Optional<String> optionalStr = Optional.ofNullable(str);
+        if (optionalStr.isPresent()) {
+            System.out.println("String is not null: " + optionalStr.get());
+        } else {
+            System.out.println("String is null");
+        }
+        
+        // Using filter to check for empty
+        if (optionalStr.filter(s -> !s.isEmpty()).isPresent()) {
+            System.out.println("String is not empty: " + optionalStr.get());
+        } else {
+            System.out.println("String is empty or null");
+        }
+    }
+}
+
+
+
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
