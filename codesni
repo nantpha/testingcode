@@ -1,3 +1,59 @@
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class AsyncMethodCaller {
+
+    private ExecutorService executorService = Executors.newCachedThreadPool();
+
+    public CompletableFuture<String> callAsyncMethod() {
+        return CompletableFuture.supplyAsync(() -> asyncMethod(), executorService);
+    }
+
+    private String asyncMethod() {
+        // Your asynchronous job here
+        // This is just a dummy example, replace it with your actual logic
+        try {
+            // Simulate some processing time
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "Async method result";
+    }
+
+    public static void main(String[] args) {
+        AsyncMethodCaller asyncCaller = new AsyncMethodCaller();
+        
+        // Call the method asynchronously
+        CompletableFuture<String> futureResult = asyncCaller.callAsyncMethod();
+        
+        // Handle the result or exception when the asynchronous task completes
+        futureResult.thenAccept(result -> {
+            System.out.println("Async method result: " + result);
+            asyncCaller.shutdown();
+        }).exceptionally(ex -> {
+            System.err.println("Async method failed: " + ex.getMessage());
+            asyncCaller.shutdown();
+            return null;
+        });
+        
+        // Do other tasks while waiting for the asynchronous job to complete
+        System.out.println("Doing other tasks...");
+    }
+    
+    public void shutdown() {
+        executorService.shutdown();
+    }
+}
+
+
+
+
+
+
+
 import java.util.Optional;
 
 public class Main {
