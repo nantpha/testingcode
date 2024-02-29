@@ -1,4 +1,45 @@
 
+import java.util.HashMap;
+import java.util.Map;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MapManager {
+    private Map<String, byte[]> byteMap = new HashMap<>();
+    private int maxSize = 100; // Set your desired max size here
+
+    public void addBytesToMap(String key, byte[] bytes) {
+        byteMap.put(key, bytes);
+        if (byteMap.size() >= maxSize / 2) {
+            writeToFile();
+        }
+    }
+
+    private void writeToFile() {
+        // Logic to write map contents to file
+        // For demonstration, let's just write to a dummy file
+        try (FileOutputStream fos = new FileOutputStream("mapData.txt")) {
+            for (Map.Entry<String, byte[]> entry : byteMap.entrySet()) {
+                String key = entry.getKey();
+                byte[] value = entry.getValue();
+                // Write key and value to file (you can customize this part)
+                fos.write(key.getBytes());
+                fos.write(value);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void clearMap() {
+        byteMap.clear();
+    }
+}
+
+
+
 import java.io.*;
 
 public class ContinuousDataWriter {
