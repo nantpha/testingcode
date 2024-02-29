@@ -1,4 +1,48 @@
 
+import java.io.*;
+
+public class ContinuousDataWriter {
+    private static final int BUFFER_SIZE = 8192; // Adjust buffer size as needed
+    private static final int THRESHOLD = 1024 * 1024; // Threshold to flush buffer and write to file (e.g., 1MB)
+
+    public static void main(String[] args) {
+        String filePath = "output.txt";
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(filePath);
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream, BUFFER_SIZE);
+            
+            // Simulated continuous data generation
+            for (int i = 0; i < 10000; i++) {
+                String data = generateData(); // Simulated data generation
+                byte[] bytes = data.getBytes();
+                bufferedOutputStream.write(bytes);
+
+                if (bufferedOutputStream.size() >= THRESHOLD) {
+                    // Flush the buffer to write data to the file
+                    bufferedOutputStream.flush();
+                }
+            }
+
+            // Close the streams when done
+            bufferedOutputStream.close();
+            fileOutputStream.close();
+            
+            System.out.println("Data written to file successfully.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Simulated data generation method
+    private static String generateData() {
+        // Simulated data generation logic
+        return "Sample data\n";
+    }
+}
+
+
+
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
