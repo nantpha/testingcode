@@ -1,4 +1,36 @@
-import java.io.BufferedOutputStream;
+import
+
+import java.io.ByteArrayOutputStream;
+import java.util.concurrent.Semaphore;
+
+public class ByteArrayCopy {
+    private ByteArrayOutputStream outputStream1;
+    private ByteArrayOutputStream outputStream2;
+    private Semaphore semaphore;
+
+    public ByteArrayCopy() {
+        outputStream1 = new ByteArrayOutputStream();
+        outputStream2 = new ByteArrayOutputStream();
+        semaphore = new Semaphore(1); // Initialize semaphore with 1 permit (one thread can access at a time)
+    }
+
+    public void writeToOutputStream1(byte[] data) throws InterruptedException {
+        semaphore.acquire(); // Acquire the semaphore permit
+        outputStream1.write(data);
+        semaphore.release(); // Release the semaphore permit
+    }
+
+    public void copyToOutputStream2IfAvailable() throws InterruptedException {
+        if (semaphore.tryAcquire()) { // Try to acquire the semaphore permit without waiting
+            outputStream1.writeTo(outputStream2); // Copy data from outputStream1 to outputStream2
+            semaphore.release(); // Release the semaphore permit
+        }
+    }
+}
+
+
+
+ java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
