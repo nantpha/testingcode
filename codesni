@@ -1,5 +1,31 @@
 import
+import java.lang.reflect.Field;
 
+public class ReflectionTest {
+
+    public static void main(String[] args) throws Exception {
+        OuterObject outerObject = new OuterObject();
+        InnerObject innerObject = new InnerObject();
+        
+        // Setting innerObject to outerObject
+        outerObject.setInnerObject(innerObject);
+
+        // Getting the field in OuterObject class
+        Field innerObjectField = OuterObject.class.getDeclaredField("innerObject");
+        
+        // Setting the field accessible, as it's private
+        innerObjectField.setAccessible(true);
+
+        // Getting the value of innerObject field from outerObject
+        InnerObject innerObjectFromOuterObject = (InnerObject) innerObjectField.get(outerObject);
+
+        // Setting the value of innerObject
+        innerObjectFromOuterObject.setValue("New value");
+
+        // Printing the updated value
+        System.out.println(innerObjectFromOuterObject.getValue());
+    }
+}
 import java.io.ByteArrayOutputStream;
 import java.util.concurrent.Semaphore;
 
