@@ -1,3 +1,59 @@
+
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+@Controller
+public class FileController {
+
+    @GetMapping("/download")
+    public ResponseEntity<Resource> downloadFile(@RequestParam String fileName) {
+        // Load file as Resource
+        Resource resource;
+        try {
+            Path filePath = Paths.get("path_to_your_files_directory", fileName); // Provide the path to your file directory
+            resource = new UrlResource(filePath.toUri());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return ResponseEntity.notFound().build();
+        }
+
+        // Check if the file exists
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Set content type and attachment disposition
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDispositionFormData("attachment", fileName);
+
+        // Return ResponseEntity with file as body and headers
+        try {
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(resource);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
+        }
+    }
+}
+
+
+
+
 import
 import java.lang.reflect.Field;
 
