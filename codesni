@@ -9,6 +9,36 @@ public class SecurityConfigTest {
 
     @Test
     public void testSecurityFilterChain() throws Exception {
+        // Mock SecurityFilterChain
+        SecurityFilterChain securityFilterChainMock = Mockito.mock(SecurityFilterChain.class);
+
+        // Mock HttpSecurity
+        HttpSecurity httpSecurityMock = Mockito.mock(HttpSecurity.class);
+        
+        // Stub the behavior of csrf() to disable CSRF
+        Mockito.doAnswer(invocation -> {
+            HttpSecurity http = (HttpSecurity) invocation.getMock();
+            return http;
+        }).when(httpSecurityMock).csrf(Mockito.any());
+
+        // Call the method with the mocked HttpSecurity
+        SecurityFilterChain securityFilterChain = new SecurityConfig().securityFilterChain(httpSecurityMock);
+
+        // Assert that the returned object is not null
+        assertNotNull(securityFilterChain);
+    }
+}
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+public class SecurityConfigTest {
+
+    @Test
+    public void testSecurityFilterChain() throws Exception {
         // Mock HttpSecurity
         HttpSecurity httpSecurityMock = Mockito.mock(HttpSecurity.class);
 
