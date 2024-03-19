@@ -1,3 +1,42 @@
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+import static org.mockito.Mockito.*;
+
+public class SecurityConfigurerTest {
+
+    @Mock
+    private HttpSecurity httpSecurity;
+
+    @InjectMocks
+    private SecurityConfigurer securityConfigurer;
+
+    @Test
+    public void configureHttpSecurity_Test() throws Exception {
+        MockitoAnnotations.initMocks(this); // Initialize the mocks
+
+        // Configure the mocks
+        when(httpSecurity.csrf()).thenReturn(httpSecurity);
+        when(httpSecurity.disable()).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeRequests()).thenReturn(httpSecurity);
+        when(httpSecurity.anyRequest()).thenReturn(httpSecurity);
+        when(httpSecurity.permitAll()).thenReturn(httpSecurity);
+
+        // Invoke the method to be tested
+        securityConfigurer.configureHttpSecurity(httpSecurity);
+
+        // Verify that the expected methods were called
+        verify(httpSecurity).csrf();
+        verify(httpSecurity).disable();
+        verify(httpSecurity).authorizeRequests();
+        verify(httpSecurity).anyRequest();
+        verify(httpSecurity).permitAll();
+        verifyNoMoreInteractions(httpSecurity); // Ensure no unexpected interactions occurred
+    }
+}
 
 
 import org.springframework.core.io.Resource;
