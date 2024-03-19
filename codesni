@@ -1,4 +1,37 @@
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class SecurityConfigIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void testSecuredEndpoint() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/secured-endpoint")
+                .with(SecurityMockMvcRequestPostProcessors.user("username").roles("ROLE_USER")))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+        // Add more assertions if needed
+    }
+
+    @Test
+    public void testUnsecuredEndpoint() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/unsecured-endpoint"))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+        // Add more assertions if needed
+    }
+}
+
+
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
