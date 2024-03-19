@@ -1,4 +1,51 @@
 import org.junit.jupiter.api.Test;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+class TestHttpSecurity implements HttpSecurity {
+    private boolean csrfDisabled = false;
+
+    @Override
+    public HttpSecurity csrf() throws Exception {
+        csrfDisabled = true;
+        return this;
+    }
+
+    @Override
+    public SecurityFilterChain build() throws Exception {
+        return null; // Not relevant for this test
+    }
+
+    // Add any other methods from HttpSecurity interface that your code uses
+    // Implement them as needed for your test case
+}
+
+class SecurityConfigTest {
+
+    @Test
+    void testSecurityFilterChain() throws Exception {
+        // Create instance of TestHttpSecurity
+        TestHttpSecurity httpSecurity = new TestHttpSecurity();
+
+        // Create instance of SecurityConfig
+        SecurityConfig securityConfig = new SecurityConfig();
+
+        // Invoke the method under test
+        SecurityFilterChain securityFilterChain = securityConfig.securityFilterChain(httpSecurity);
+
+        // Assert that SecurityFilterChain is not null
+        assertNotNull(securityFilterChain);
+
+        // Assert that CSRF is disabled
+        assertNotNull(httpSecurity);
+        assert(httpSecurity.isCsrfDisabled());
+    }
+}
+
+
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
