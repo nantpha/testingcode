@@ -1,3 +1,30 @@
+import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+public class YourExceptionClassTest {
+
+    @Test
+    public void testHandleException() {
+        // Setup
+        YourExceptionClass exceptionInstance = new YourExceptionClass();
+        String body = "Example body";
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json");
+        int status = 500;
+
+        // Exercise
+        ResponseEntity responseEntity = exceptionInstance.handle(exceptionInstance, body, headers, status);
+
+        // Assert
+        assertNotNull(responseEntity); // Check that response entity is not null
+        assertEquals(500, responseEntity.getStatusCodeValue()); // Check status code
+        assertEquals(body, responseEntity.getBody()); // Check body
+        assertEquals(headers, responseEntity.getHeaders()); // Check headers
+    }
+}
+
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
