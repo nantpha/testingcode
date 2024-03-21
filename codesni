@@ -1,3 +1,81 @@
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+
+@Service
+public class FileWriterService {
+
+    private final ThreadPoolTaskExecutor taskExecutor;
+    private final DefaultDataBufferFactory dataBufferFactory = new DefaultDataBufferFactory();
+
+    public FileWriterService(ThreadPoolTaskExecutor taskExecutor) {
+        this.taskExecutor = taskExecutor;
+    }
+
+    @Async
+    public Mono<Void> writeToFile(Resource resource, String content) {
+        return Mono.fromCallable(() -> {
+            synchronized (this) {
+                Path path = resource.getFile().toPath();
+                try {
+                    DataBuffer dataBuffer = dataBufferFactory.wrap(content.getBytes());
+                    Files.write(path, dataBuffer.asByteBuffer().array(), StandardOpenOption.APPEND);
+                    DataBufferUtils.release(dataBuffer);
+                } catch (IOException e) {
+                    // Handle IOException
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        });
+    }
+}
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+
+@Service
+public class FileWriterService {
+
+    private final DefaultDataBufferFactory dataBufferFactory = new DefaultDataBufferFactory();
+
+    // Method to write to file with synchronization
+    public Mono<Void> writeToFile(Resource resource, String content) {
+        return Mono.fromCallable(() -> {
+            synchronized (this) {
+                Path path = resource.getFile().toPath();
+                try {
+                    DataBuffer dataBuffer = dataBufferFactory.wrap(content.getBytes());
+                    Files.write(path, dataBuffer.asByteBuffer().array(), StandardOpenOption.APPEND);
+                    DataBufferUtils.release(dataBuffer);
+                } catch (IOException e) {
+                    // Handle IOException
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        });
+    }
+}
+
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
