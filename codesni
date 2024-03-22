@@ -1,4 +1,33 @@
+import java.util.concurrent.atomic.AtomicBoolean;
 
+public class LockFreeMethodLock {
+    private AtomicBoolean lock;
+
+    public LockFreeMethodLock() {
+        lock = new AtomicBoolean(false);
+    }
+
+    public boolean tryLock() {
+        return lock.compareAndSet(false, true);
+    }
+
+    public void unlock() {
+        lock.set(false);
+    }
+
+    // Example of a method protected by the lock
+    public void lockedMethod() {
+        while (!tryLock()) {
+            // Spin until the lock is acquired
+        }
+        try {
+            // Critical section - code that needs to be protected
+            System.out.println("Locked method is executing");
+        } finally {
+            unlock();
+        }
+    }
+}
 import java.util.concurrent.atomic.AtomicReference;
 
 public class LockFreeQueue<T> {
