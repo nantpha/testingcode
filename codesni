@@ -1,3 +1,75 @@
+
+import java.util.concurrent.atomic.AtomicReference;
+
+public class LockFreeQueue<T> {
+    private static class Node<T> {
+        T data;
+        AtomicReference<Node<T>> next;
+
+        Node(T data) {
+            this.data = data;
+            next = new AtomicReference<>(null);
+        }
+    }
+
+    private AtomicReference<Node<T>> head;
+    private AtomicReference<Node<T>> tail;
+
+    public LockFreeQueue() {
+        Node<T> dummy = new Node<>(null);
+        head = new AtomicReference<>(dummy);
+        tail = new AtomicReference<>(dummy);
+    }
+
+    public void enqueue(T item) {
+        Node<T> newNode = new Node<>(item);
+        while (true) {
+            Node<T> curTail = tail.get();
+            Node<T> tailNext = curTail.next.get();
+            if (curTail == tail.get()) {
+                if (tailNext != null) {
+                    // Queue in intermediate state, advance tail
+                    tail.compareAndSet(curTail, tailNext);
+                } else {
+                    // In quiescent state, try to insert new node
+                    if (curTail.next.compareAndSet(null, newNode)) {
+                        // Enqueue successful, advance tail
+                        tail.compareAndSet(curTail, newNode);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    public T dequeue() {
+        while (true) {
+            Node<T> curHead = head.get();
+            Node<T> curTail = tail.get();
+            Node<T> headNext = curHead.next.get();
+
+            if (curHead == head.get()) {
+                if (curHead == curTail) {
+                    // Queue is empty or in intermediate state, return null
+                    if (headNext == null) {
+                        return null;
+                    }
+                    // Queue in intermediate state, advance tail
+                    tail.compareAndSet(curTail, headNext);
+                } else {
+                    // In quiescent state, try to dequeue
+                    T item = headNext.data;
+                    if (head.compareAndSet(curHead, headNext)) {
+                        // Dequeue successful, return item
+                        return item;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
