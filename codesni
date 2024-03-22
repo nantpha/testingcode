@@ -1,3 +1,27 @@
+
+public class ThreadBasedSynchronization {
+    private ThreadLocal<Object> threadLocalLock = ThreadLocal.withInitial(Object::new);
+
+    public void synchronizedMethod() {
+        synchronized (threadLocalLock.get()) {
+            // Critical section - code that needs to be synchronized based on the thread
+            System.out.println("Synchronized method is executing for thread: " + Thread.currentThread().getName());
+        }
+    }
+
+    public static void main(String[] args) {
+        ThreadBasedSynchronization synchronization = new ThreadBasedSynchronization();
+
+        // Create multiple threads to demonstrate synchronization based on thread
+        for (int i = 0; i < 5; i++) {
+            Thread thread = new Thread(() -> synchronization.synchronizedMethod());
+            thread.start();
+        }
+    }
+}
+
+
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LockFreeMethodLock {
