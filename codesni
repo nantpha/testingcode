@@ -1,4 +1,45 @@
 
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import java.io.IOException;
+
+import static org.mockito.Mockito.verify;
+
+@SpringBootTest
+@ExtendWith(MockitoExtension.class)
+public class YourFilterTest {
+
+    @Mock
+    private FilterChain filterChain;
+
+    @InjectMocks
+    private YourFilter yourFilter;
+
+    @Test
+    public void testFilter() throws IOException, ServletException {
+        // Mock request and response
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // Invoke the filter
+        yourFilter.doFilter(request, response, filterChain);
+
+        // Verify that the filter chain's doFilter method was called
+        verify(filterChain).doFilter(request, response);
+    }
+}
+
+
+
 Absolutely, ensuring the protection of customers and the firm by operating within a sound trial and control environment is crucial. Here are some goals you can set as a team member to achieve this:
 
 1. **Compliance Adherence:**
