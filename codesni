@@ -1,3 +1,43 @@
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class SecurityConfigTest {
+
+    @Test
+    public void testSecurityConfig() throws Exception {
+        // Create a mock HttpSecurity
+        HttpSecurity httpSecurity = Mockito.mock(HttpSecurity.class);
+
+        // Create a map to be mocked
+        Map<Class<?>, Object> mapToMock = new HashMap<>();
+        
+        // Mocking map behavior
+        Object mockedObject = new Object(); // Create a mock object
+        mapToMock.put(SomeClass.class, mockedObject); // Put the mock object into the map
+
+        // Mock the behavior of the map in HttpSecurity
+        Mockito.when(httpSecurity.getSharedObject(Mockito.any(Class.class)))
+               .thenAnswer(invocation -> mapToMock.get(invocation.getArgument(0)));
+
+        // Now you can perform actions on HttpSecurity that involve the map
+        // For example, if you have a method that gets an object from the map:
+        Object object = httpSecurity.getSharedObject(SomeClass.class);
+
+        // Perform assertions or verifications based on your test scenario
+        // For example, verify that the correct object was retrieved from the map
+        Mockito.verify(httpSecurity).getSharedObject(SomeClass.class);
+        Mockito.verifyNoMoreInteractions(httpSecurity); // Ensure no other interactions with httpSecurity
+    }
+
+    // Dummy class for demonstration
+    static class SomeClass {
+        // Some implementation
+    }
+}
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
