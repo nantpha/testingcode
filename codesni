@@ -1,3 +1,33 @@
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders;
+import org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.post;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class SecurityConfigIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void testCsrfDisabledAndPermitAllRequests() throws Exception {
+        ResultActions resultActions = mockMvc.perform(post("/example-url").with(SecurityMockMvcRequestPostProcessors.csrf()));
+
+        resultActions
+                .andExpect(SecurityMockMvcResultMatchers.csrf().doesNotExist())
+                .andExpect(SecurityMockMvcResultMatchers.request().authenticated()); // Example assertion, modify as needed
+    }
+}
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
