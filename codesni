@@ -1,3 +1,35 @@
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders;
+import org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.logout;
+
+@SpringBootTest
+public class SecurityConfigIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void testCsrfDisabledAndAuthorizeRequests() throws Exception {
+        ResultActions resultActions = mockMvc.perform(SecurityMockMvcRequestBuilders
+                .authorizeRequests()
+                .anyRequest()
+                .permitAll()
+        );
+
+        resultActions
+                .andExpect(SecurityMockMvcResultMatchers.csrf().disable())
+                .andExpect(SecurityMockMvcResultMatchers.request().authenticated()); // Example assertion, modify as needed
+    }
+}
+
 
 
 import org.junit.jupiter.api.Test;
