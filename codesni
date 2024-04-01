@@ -1,3 +1,21 @@
+
+#!/bin/bash
+
+# Check if PV exists
+pv_name="your_pv_name_here"
+pv_exists=$(kubectl get pv "$pv_name" 2>/dev/null)
+
+if [[ -z $pv_exists ]]; then
+    echo "PV $pv_name does not exist. Creating..."
+    # Your PV creation command here
+    # Example: kubectl apply -f pv.yaml
+else
+    echo "PV $pv_name already exists."
+fi
+
+
+
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
