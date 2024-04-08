@@ -116,6 +116,48 @@
 
 59. **AWS App Runner**: Explore AWS App Runner for deploying and managing containerized and serverless applications without managing infrastructure, including automatic scaling and load balancing.
 
+60. **AWS X-Ray**: Understand AWS X-Ray for tracing and analyzing requests as they travel through distributed systems, providing insights into application performance and latency.
+
+61. **AWS CloudHSM**: Explore AWS CloudHSM for hardware-based key management and cryptographic operations, providing secure and compliant key storage and encryption.
+
+62. **AWS Backup**: Learn about AWS Backup for centralizing and automating data protection across AWS services, including EBS volumes, RDS databases, DynamoDB tables, and EFS file systems.
+
+63. **Amazon Managed Blockchain**: Familiarize yourself with Amazon Managed Blockchain for creating and managing blockchain networks using popular open-source frameworks like Hyperledger Fabric and Ethereum.
+
+64. **AWS License Manager**: Understand AWS License Manager for managing software licenses and enforcing license compliance across AWS resources and accounts.
+
+65. **Amazon Lookout for Metrics**: Explore Amazon Lookout for Metrics for detecting anomalies and outliers in time-series data using machine learning algorithms, enabling proactive monitoring and alerting.
+
+66. **Amazon Fraud Detector**: Learn about Amazon Fraud Detector for detecting and preventing fraud in real-time using machine learning models trained on historical data and custom rules.
+
+67. **AWS Network Firewall**: Understand AWS Network Firewall for protecting virtual networks with stateful inspection, intrusion detection, and threat intelligence integration.
+
+68. **AWS Key Management Service (KMS)**: Explore AWS KMS for creating and managing encryption keys used to encrypt and decrypt data across AWS services and applications.
+
+69. **Amazon Elastic Inference**: Familiarize yourself with Amazon Elastic Inference for adding GPU-powered inference acceleration to Amazon EC2 instances, improving the performance and cost-effectiveness of machine learning workloads.
+
+70. **AWS App Mesh**: Learn about AWS App Mesh for managing and monitoring microservices-based applications, providing traffic routing, observability, and security features.
+
+71. **AWS Lambda@Edge**: Understand Lambda@Edge, which allows you to run Lambda functions at AWS edge locations, enabling you to customize content delivery and application logic closer to end-users.
+
+72. **Amazon WorkSpaces**: Learn about Amazon WorkSpaces, a fully managed desktop-as-a-service (DaaS) solution that allows you to provision and manage virtual desktops in the cloud.
+
+73. **AWS Snow Family**: Explore the AWS Snow Family, including Snowcone, Snowball, and Snowmobile, for offline data transfer, edge computing, and large-scale data migration.
+
+74. **AWS Wavelength**: Understand AWS Wavelength, which brings AWS services to the edge of 5G networks, enabling ultra-low latency and high-bandwidth applications.
+
+75. **AWS IoT Events**: Familiarize yourself with AWS IoT Events, a managed service for detecting and responding to events from IoT sensors and devices in real-time.
+
+76. **Amazon Kendra**: Learn about Amazon Kendra, an intelligent search service powered by machine learning that allows you to search and retrieve information from a wide range of data sources.
+
+77. **AWS IoT Device Defender**: Explore AWS IoT Device Defender for securing IoT devices and monitoring device fleets for security vulnerabilities and compliance violations.
+
+78. **AWS Panorama**: Understand AWS Panorama, a machine learning appliance that enables you to add computer vision capabilities to existing on-premises cameras and video feeds.
+
+79. **Amazon Connect**: Learn about Amazon Connect, a cloud-based contact center service that enables you to set up and manage customer contact centers easily.
+
+80. **AWS Well-Architected Labs**: Explore AWS Well-Architected Labs, a collection of hands-on labs and workshops designed to help you learn and implement best practices for designing and operating workloads on AWS.
+
 
 
 
