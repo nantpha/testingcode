@@ -90,6 +90,33 @@
 
 46. **AWS Well-Architected Tool**: Understand the AWS Well-Architected Tool for reviewing and improving the architecture of AWS workloads based on the AWS Well-Architected Framework's pillars: operational excellence, security, reliability, performance efficiency, and cost optimization.
 
+47. **AWS Transit Gateway**: Learn about AWS Transit Gateway for simplifying network connectivity between multiple Amazon VPCs, on-premises networks, and VPN connections.
+
+48. **AWS Outposts**: Explore AWS Outposts, which extends AWS infrastructure and services to on-premises environments, allowing you to run AWS compute, storage, database, and analytics services locally.
+
+49. **AWS DataSync**: Understand AWS DataSync for automating data transfers between on-premises storage systems and AWS services, including Amazon S3, Amazon EFS, and Amazon FSx.
+
+50. **AWS Elemental MediaPackage**: Familiarize yourself with AWS Elemental MediaPackage for preparing and protecting live and on-demand video streams for delivery over the internet.
+
+51. **AWS Service Catalog**: Learn about AWS Service Catalog for centrally managing and provisioning IT services and resources on AWS, including approved software, infrastructure, and architecture patterns.
+
+52. **AWS IoT Core**: Explore AWS IoT Core for connecting and managing IoT devices securely at scale, including device provisioning, message routing, and device shadow.
+
+53. **AWS CloudEndure Migration**: Understand AWS CloudEndure Migration for simplifying and accelerating large-scale migration of physical, virtual, and cloud-based workloads to AWS.
+
+54. **AWS CodeCommit**: Learn about AWS CodeCommit for securely storing and managing source code repositories in the AWS cloud, including Git-based version control, branching, and collaboration features.
+
+55. **AWS CodeArtifact**: Familiarize yourself with AWS CodeArtifact for securely storing, publishing, and sharing software packages using package repositories, including support for multiple package formats and dependency management.
+
+56. **AWS Data Pipeline**: Explore AWS Data Pipeline for orchestrating and automating data-driven workflows across various AWS services and on-premises data sources.
+
+57. **AWS Organizations SCPs (Service Control Policies)**: Understand AWS Organizations SCPs for setting permission guardrails and access controls across multiple AWS accounts within an organization.
+
+58. **AWS PrivateLink**: Learn about AWS PrivateLink for securely connecting AWS services, VPC endpoints, and on-premises applications without exposing traffic to the public internet.
+
+59. **AWS App Runner**: Explore AWS App Runner for deploying and managing containerized and serverless applications without managing infrastructure, including automatic scaling and load balancing.
+
+
 
 
 
