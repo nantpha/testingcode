@@ -1,4 +1,19 @@
-
+public class Main {
+    public static void main(String[] args) {
+        String value = "https://hello.world/hi/hello?key=values";
+        
+        // Find the index of the '?'
+        int index = value.indexOf('?');
+        
+        if (index != -1) { // If the '?' is found
+            // Get the substring from the beginning of the string to the index of the '?'
+            String substring = value.substring(0, index + 1); // Include the '?' itself
+            System.out.println(substring);
+        } else {
+            System.out.println("No '?' found in the string.");
+        }
+    }
+}
 
 Sure, crafting a clear and concise email is important. Here's a suggestion:
 
