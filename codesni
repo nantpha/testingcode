@@ -1,3 +1,25 @@
+
+Subject: Resolution of Pod Restart Issue and Ongoing Connectivity Challenges
+
+Dear [Recipient],
+
+I hope this message finds you well.
+
+I am pleased to inform you that the recent issue concerning pod restarts has been successfully resolved, thanks to the invaluable assistance provided by Prashanth. His expertise and dedication were instrumental in swiftly resolving the matter, and we extend our sincere gratitude to him.
+
+However, despite resolving the pod restart issue, we have encountered subsequent connectivity challenges within our cluster. Despite minimal CPU and thread utilization, certain requests are still failing to reach the application effectively.
+
+Rest assured, our team is actively investigating this matter to identify the underlying cause and implement appropriate measures to ensure uninterrupted connectivity and optimal performance within our cluster.
+
+We appreciate your patience and understanding as we work to resolve this issue expediently. We will keep you updated on our progress and any further actions taken.
+
+Thank you for your continued support.
+
+Warm regards,
+
+[Your Name]
+[Your Position/Title]
+[Your Contact Information]
 Subject: Issue with Pod Restart Resolved, Further Connectivity Concerns Identified
 
 Dear [Recipient],
