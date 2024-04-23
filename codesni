@@ -1,3 +1,52 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+public class CurlWithToken {
+    public static void main(String[] args) {
+        String curlCommand = "curl -X GET -H 'Authorization: Bearer YOUR_TOKEN' YOUR_API_ENDPOINT";
+        
+        try {
+            Process process = Runtime.getRuntime().exec(curlCommand);
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            StringBuilder response = new StringBuilder();
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            
+            // Assuming the response is a JSON array of values
+            String[] values = parseValuesFromJsonArray(response.toString());
+
+            for (String value : values) {
+                String url = "SECOND_ENDPOINT/" + value; // Construct the URL by appending the value
+                String secondCurlCommand = "curl -X GET " + url;
+
+                Process secondProcess = Runtime.getRuntime().exec(secondCurlCommand);
+                BufferedReader secondReader = new BufferedReader(new InputStreamReader(secondProcess.getInputStream()));
+
+                StringBuilder secondResponse = new StringBuilder();
+                while ((line = secondReader.readLine()) != null) {
+                    secondResponse.append(line);
+                }
+
+                System.out.println("Response for " + value + ": " + secondResponse.toString());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // You need to implement this method to parse values from JSON array
+    private static String[] parseValuesFromJsonArray(String jsonArray) {
+        // Implement your JSON parsing logic here
+        return new String[]{"value1", "value2", "value3"}; // Dummy values for demonstration
+    }
+}
+
+
+
 public class Main {
     public static void main(String[] args) {
         String value = "https://hello.world/hi/hello?key=values";
