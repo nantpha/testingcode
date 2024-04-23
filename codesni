@@ -1,3 +1,25 @@
+Subject: Issue with Pod Restart Resolved, Further Connectivity Concerns Identified
+
+Dear [Recipient],
+
+I hope this email finds you well. I wanted to update you on the recent issue we encountered with pod restarts and subsequent connectivity concerns within our cluster.
+
+Thanks to the diligent efforts of Prashanth, we were able to resolve the issue related to pod restarts swiftly. We appreciate his expertise and timely assistance in troubleshooting and resolving the problem.
+
+However, it has come to our attention that despite resolving the pod restart issue, there are still some challenges with certain requests not reaching the cluster effectively. Upon initial investigation, we've observed that CPU and thread utilization remain within expected parameters during these instances. Despite this, connectivity to the application is still impacted.
+
+We understand the critical nature of this issue and are actively investigating further to pinpoint the root cause and implement necessary measures to ensure seamless connectivity and performance within our cluster.
+
+Please rest assured that our team is dedicated to resolving this matter promptly, and we will keep you updated on any developments or additional actions taken.
+
+Thank you for your patience and understanding.
+
+Best regards,
+[Your Name]
+[Your Position/Title]
+[Your Contact Information]
+
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
