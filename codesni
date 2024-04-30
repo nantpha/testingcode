@@ -1,3 +1,67 @@
+#!/bin/bash
+
+# Function to create PersistentVolume if it doesn't exist
+create_pv() {
+    pv_name="$1"
+    pv_capacity="$2"
+    pv_storage_class="$3"
+    pv_host_path="$4"
+
+    if kubectl get pv "$pv_name" &> /dev/null; then
+        echo "PersistentVolume $pv_name already exists."
+    else
+        cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: $pv_name
+spec:
+  capacity:
+    storage: $pv_capacity
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: $pv_storage_class
+  hostPath:
+    path: "$pv_host_path"
+EOF
+        echo "PersistentVolume $pv_name created."
+    fi
+}
+
+# Function to create PersistentVolumeClaim if it doesn't exist
+create_pvc() {
+    pvc_name="$1"
+    pvc_pv="$2"
+    pvc_access_mode="$3"
+    pvc_storage_class="$4"
+
+    if kubectl get pvc "$pvc_name" &> /dev/null; then
+        echo "PersistentVolumeClaim $pvc_name already exists."
+    else
+        cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: $pvc_name
+spec:
+  accessModes:
+    - $pvc_access_mode
+  storageClassName: $pvc_storage_class
+  resources:
+    requests:
+      storage: $pvc_pv
+EOF
+        echo "PersistentVolumeClaim $pvc_name created."
+    fi
+}
+
+# Example usage
+create_pv "example-pv" "1Gi" "standard" "/mnt/data"
+create_pvc "example-pvc" "1Gi" "ReadWriteOnce" "standard"
+
+
+
 . I wanted to let you know that I've gained some valuable insights into flow and code recently.
 Subject: Resolution of Pod Restart Issue and Ongoing Connectivity Challenges
 
