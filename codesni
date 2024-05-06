@@ -1,3 +1,31 @@
+
+public class EventPerform extends Applet implements
+ActionListener
+12
+13
+14
+15
+16
+17
+Button btw;
+TextField txt;
+public void init()
+txt - new TextField();
+txt. setBounds (40, 55, 200, 40);
+btw = new JButton("CLICK");
+btw.setBounds (100, 120, 50, 50);
+add (btw) :
+add (txt) ;
+bittn. addActionListener(this);
+setLayout(null):
+I
+public void actionPerformed(ActionEvent ae)
+Select an optio
+Both clas: by anothe
+The layo nothing
+In the ap
+Metti Online Assessment © 2021-2031
+
 Bruce is the energy administrator in a city. He has set up N solar panels throughout the city which generate varying amounts of energy. The energy output of N solar panels is given in an integer array X.
 The power output of a single solar panel in a day can be calculated by multiplying the energy output of a solar panel with its corresponding
 Bruce can reposition a solar panel by placing it either before or after another solar panel, but he can perform this repositioning only once as it is expensive to reinstall a solar panel
