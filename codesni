@@ -1,4 +1,20 @@
-
+Both class and interface cannot be extended & implemented together by another dass.
+• The layout has set nullgo the code will be executed successfully. but nothing will be visible.
+口
+★
+All Bookmarks
+Finish Test
+Next Section
+Neerukonda ay
+In the applet code, the attribute will give wrong value as java
+*Field():
+че, 55,
+200, 48);
+ton ("CLICK"):
+188, 126, 50, 50);
+つ
+The code will be executed successfully and it will print the message
+"LOVE TO CODE".
 public class EventPerform extends Applet implements
 ActionListener
 12
