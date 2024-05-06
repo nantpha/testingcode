@@ -1,3 +1,11 @@
+
+Assume that you are working on a few main thread exception scenarios such as:
+1. When your java class is compiled from another JDK version, then this exception comes and you try to run it from another java version.
+2. it prints the exception in the console when an exception is thrown from the main method. The first and second part explains that an exception is thrown from the main method & prints the exception class name and then after a colon, it prints the exception message.
+Considering the given information, what type of main thread exception scenarios are depicted here? Analyze the given choices and select the option with the correct set of answers.
+
+
+
 Both class and interface cannot be extended & implemented together by another dass.
 • The layout has set nullgo the code will be executed successfully. but nothing will be visible.
 口
