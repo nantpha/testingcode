@@ -5,7 +5,12 @@ Your task is to help Bruce find and return an integer value representing the max
 Note:
 • Assume 1 bosed indexing
 • The energy output of a solar ponel con be either negative or positivel
-
+Input Specification:
+inputl: An integer value N. representing the number of solar panels. input2: An integer array X. representing the energy output of N solar panels.
+Output Specification:
+Return an integer value representing the maximum total power that the solar panels can produce in a day.
+Example 1: input1: 5
+input2: (8,1,6,3.4)
 
 #!/bin/bash
 
