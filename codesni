@@ -12,6 +12,20 @@ Return an integer value representing the maximum total power that the solar pane
 Example 1: input1: 5
 input2: (8,1,6,3.4)
 
+output 78
+
+Explanation:
+Originally, the energy output of the solar panels is (8,1,6,3,4) and the total power that the solar panels can produce in a day is:
+(1°8) + (2*1) + (3*6) + (4*3) + (5*4) = 60.
+To maximize the total power production of the solar panels, Bruce can reposition the first solar panel (8) after the last solar panel (4). The new energy output array will be (1.6.3,4.8) and hage the total power produced by the solar panels in a day will be:
+(1*1) + (2*6) + 3*3) + (44) + (5*8) - 78.
+No other orientation of these solar panels can exceed this total power production. Hence, 78 will be returned as the output.
+Originally, the energy output of the solar panels is (3.5.-9,10) and the total power that the solar panels can produce in a day is:
+(1*3) + (2*5) + (3*-9) + (4*10) = 26.
+To maximize the total power production of the solar panels, Bruce can reposition the second last solar panel (-9) before the first solar panel (3).
+The new energy output array will be (-9,3.5.10) amd here the total power produced by the solar panels in a day will be:
+(1*-9) + (213) - (3*5) + (4*10) = 52.
+No other orientation of these solar panels can exceed this total power production. Hence 52 will be returned as the output.
 #!/bin/bash
 
 # Function to check if PersistentVolume exists and create if not
