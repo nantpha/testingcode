@@ -1,3 +1,12 @@
+Bruce is the energy administrator in a city. He has set up N solar panels throughout the city which generate varying amounts of energy. The energy output of N solar panels is given in an integer array X.
+The power output of a single solar panel in a day can be calculated by multiplying the energy output of a solar panel with its corresponding
+Bruce can reposition a solar panel by placing it either before or after another solar panel, but he can perform this repositioning only once as it is expensive to reinstall a solar panel
+Your task is to help Bruce find and return an integer value representing the maximum total power that the solar panels can produce in a day. *
+Note:
+• Assume 1 bosed indexing
+• The energy output of a solar ponel con be either negative or positivel
+
+
 #!/bin/bash
 
 # Function to check if PersistentVolume exists and create if not
