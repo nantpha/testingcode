@@ -1,3 +1,53 @@
+1. Write a program to demonstrate the use of lambda expressions to find the highest number in a list.
+2. How would you use the Stream API to filter even numbers from a list of integers?
+3. Explain the purpose of the flatMap operation in Java 8 Streams with an example.
+4. Write a program to demonstrate the usage of the DateTime API to get the current date and time.
+5. What is the purpose of the orElse method in the Optional class? Provide an example.
+6. How can you use default methods in Java 8 interfaces to provide a default implementation of a method?
+7. Write a program to show how CompletableFuture can be used for asynchronous computation.
+8. Explain the purpose of the map operation in Java 8 Streams. Provide an example.
+9. How do you use the reduce operation in Java 8 Streams? Provide an example.
+10. Write a program to demonstrate the usage of the DateTimeFormatter class to format dates in Java 8.
+11. Explain how you can use the allMatch method in Java 8 Streams. Provide an example.
+12. How do you handle exceptions in CompletableFuture in Java 8?
+13. Write a program to demonstrate the usage of the filter method in Java 8 Streams.
+14. Explain the purpose of the orElseGet method in the Optional class. Provide an example.
+15. How can you convert a Stream to an array in Java 8? Provide an example.
+16. Write a program to show how you can use the forEach method in Java 8 Streams.
+17. Explain the purpose of the peek method in Java 8 Streams. Provide an example.
+18. How do you convert a List to a Map using Java 8 Streams? Provide an example.
+19. Write a program to demonstrate the usage of the distinct method in Java 8 Streams.
+20. Explain the purpose of the anyMatch method in Java 8 Streams. Provide an example.
+21. How do you use the takeWhile method in Java 8 Streams? Provide an example.
+22. Write a program to demonstrate the usage of the skip method in Java 8 Streams.
+23. Explain the purpose of the groupingBy method in the Collectors class. Provide an example.
+24. How do you use the partitioningBy method in the Collectors class? Provide an example.
+25. Write a program to demonstrate the usage of the joining method in the Collectors class.
+26. Explain the purpose of the min and max methods in Java 8 Streams. Provide examples.
+27. How do you use the distinct method to remove duplicate elements from a Stream? Provide an example.
+28. Write a program to demonstrate the usage of the concat method in CompletableFuture.
+29. Explain the purpose of the orElseThrow method in the Optional class. Provide an example.
+30. How do you use the flatMap operation to flatten a Stream of Streams? Provide an example.
+31. Write a program to demonstrate the usage of the limit method in Java 8 Streams.
+32. Explain the purpose of the reduce method in the Stream interface. Provide an example.
+33. How do you use the collect method to convert a Stream to a List? Provide an example.
+34. Write a program to demonstrate the usage of the ofNullable method in the Optional class.
+35. Explain the purpose of the isPresent method in the Optional class. Provide an example.
+36. How do you use the toMap method to convert a Stream to a Map? Provide an example.
+37. Write a program to demonstrate the usage of the orElseThrow method in CompletableFuture.
+38. Explain the purpose of the comparing method in the Comparator interface. Provide an example.
+39. How do you use the findAny method to find any element in a Stream? Provide an example.
+40. Write a program to demonstrate the usage of the flatmap method in CompletableFuture.
+41. Explain the purpose of the thenApply method in CompletableFuture. Provide an example.
+42. How do you use the peek method to perform a side effect in a Stream? Provide an example.
+43. Write a program to demonstrate the usage of the thenCompose method in CompletableFuture.
+44. Explain the purpose of the thenAccept method in CompletableFuture. Provide an example.
+45. How do you use the thenCombine method in CompletableFuture? Provide an example.
+46. Write a program to demonstrate the usage of the thenRun method in CompletableFuture.
+47. Explain the purpose of the allOf method in CompletableFuture. Provide an example.
+48. How do you use the anyOf method in CompletableFuture? Provide an example.
+49. Write a program to demonstrate the usage of the join method in CompletableFuture.
+50. Explain the purpose of the cancel method in CompletableFuture. Provide an example.
 51. Write a program to demonstrate the usage of the copyOf method in the Arrays class to create an immutable List.
 52. Explain the purpose of the takeWhile method in Java 8 Streams. Provide an example.
 53. How do you use the dropWhile method in Java 8 Streams? Provide an example.
