@@ -1,1 +1,52 @@
+51. Write a program to demonstrate the usage of the copyOf method in the Arrays class to create an immutable List.
+52. Explain the purpose of the takeWhile method in Java 8 Streams. Provide an example.
+53. How do you use the dropWhile method in Java 8 Streams? Provide an example.
+54. Write a program to demonstrate the usage of the toSet method to convert a Stream to a Set.
+55. Explain the purpose of the flatMapToInt method in Java 8 Streams. Provide an example.
+56. How do you use the flatMapToDouble method to flatten a Stream of Streams of Double values? Provide an example.
+57. Write a program to demonstrate the usage of the mapToInt method to convert a Stream of objects to an IntStream.
+58. Explain the purpose of the mapToLong method in Java 8 Streams. Provide an example.
+59. How do you use the mapToObj method to convert an IntStream to a Stream of objects? Provide an example.
+60. Write a program to demonstrate the usage of the collectingAndThen method in the Collectors class.
+61. Explain the purpose of the joining method in the Collectors class with custom delimiter and prefix/suffix. Provide an example.
+62. How do you use the minBy and maxBy methods in the Collectors class to find the minimum and maximum elements based on a comparator? Provide examples.
+63. Write a program to demonstrate the usage of the partitioningBy method in the Collectors class with downstream collectors.
+64. Explain the purpose of the groupingByConcurrent method in the Collectors class. Provide an example.
+65. How do you use the toConcurrentMap method in the Collectors class to convert a Stream to a ConcurrentHashMap? Provide an example.
+66. Write a program to demonstrate the usage of the filtering method in the Collectors class.
+67. Explain the purpose of the flatMapping method in the Collectors class. Provide an example.
+68. How do you use the reducing method in the Collectors class to perform a reduction operation? Provide an example.
+69. Write a program to demonstrate the usage of the groupingBy method in the Collectors class with downstream and supplier.
+70. Explain the purpose of the teeing method in the Collectors class. Provide an example.
+71. How do you use the averagingInt method in the Collectors class to calculate the average of integer elements? Provide an example.
+72. Write a program to demonstrate the usage of the counting method in the Collectors class.
+73. Explain the purpose of the `summarizing
 
+Double` method in the Collectors class. Provide an example.
+74. How do you use the toUnmodifiableList method in the Collectors class to create an unmodifiable List?
+75. Write a program to demonstrate the usage of the toUnmodifiableMap method in the Collectors class.
+76. Explain the purpose of the copyOf method in the List interface to create an immutable List. Provide an example.
+77. How do you use the copyOf method in the Set interface to create an immutable Set? Provide an example.
+78. Write a program to demonstrate the usage of the of method in the List interface to create an immutable List.
+79. Explain the purpose of the of method in the Set interface to create an immutable Set. Provide an example.
+80. How do you use the of method in the Map interface to create an immutable Map? Provide an example.
+81. Write a program to demonstrate the usage of the ofEntries method in the Map interface to create an immutable Map.
+82. Explain the purpose of the copyOf method in the Map interface to create an immutable Map. Provide an example.
+83. How do you use the copyOf method in the Collections class to create an immutable List, Set, or Map?
+84. Write a program to demonstrate the usage of the emptyList method in the Collections class to create an empty immutable List.
+85. Explain the purpose of the emptySet method in the Collections class to create an empty immutable Set. Provide an example.
+86. How do you use the emptyMap method in the Collections class to create an empty immutable Map? Provide an example.
+87. Write a program to demonstrate the usage of the emptyNavigableSet method in the Collections class to create an empty immutable NavigableSet.
+88. Explain the purpose of the emptyNavigableMap method in the Collections class to create an empty immutable NavigableMap. Provide an example.
+89. How do you use the singletonList method in the Collections class to create a singleton List?
+90. Write a program to demonstrate the usage of the singleton method in the Collections class to create a singleton Set.
+91. Explain the purpose of the singletonMap method in the Collections class to create a singleton Map. Provide an example.
+92. How do you use the singletonIterator method in the Collections class to create a singleton Iterator?
+93. Write a program to demonstrate the usage of the emptyIterator method in the Collections class to create an empty Iterator.
+94. Explain the purpose of the emptyListIterator method in the Collections class to create an empty ListIterator. Provide an example.
+95. How do you use the emptyEnumeration method in the Collections class to create an empty Enumeration?
+96. Write a program to demonstrate the usage of the checkedList method in the Collections class to create a checked List.
+97. Explain the purpose of the checkedSet method in the Collections class to create a checked Set. Provide an example.
+98. How do you use the checkedMap method in the Collections class to create a checked Map? Provide an example.
+99. Write a program to demonstrate the usage of the synchronizedList method in the Collections class to create a synchronized List.
+100. Explain the purpose of the synchronizedSet method in the Collections class to create a synchronized Set. Provide an example.
