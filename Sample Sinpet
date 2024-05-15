@@ -1,4 +1,8 @@
+OffsetDateTime start = OffsetDateTime.parse("2024-05-15T10:00:00+02:00");
+OffsetDateTime end = OffsetDateTime.parse("2024-05-15T12:30:00+02:00");
 
+Duration duration = Duration.between(start, end);
+System.out.println("Duration: " + duration);
 
 Subject: Heartfelt Appreciation for Your Support in Setting Up Dynatrace
 
