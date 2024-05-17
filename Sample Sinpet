@@ -1,3 +1,33 @@
+
+Certainly! Here's a concise and professional email template you can use to inform your team or relevant stakeholders that the Global Load Balancer (GLB) is not working, but the pods are up and running:
+
+---
+
+**Subject:** Issue with GLB - Pods Operational
+
+**Dear [Recipient's Name],**
+
+I hope this message finds you well.
+
+I wanted to inform you that we are currently experiencing an issue with the Global Load Balancer (GLB). Despite this, I have verified that all the pods are up and running without any issues.
+
+Our team is actively investigating the cause of the GLB malfunction and working towards a resolution. In the meantime, the pods are fully operational and handling traffic as expected, ensuring that there is no interruption in service.
+
+I will provide updates as we make progress on resolving the GLB issue. If you have any questions or need further information, please do not hesitate to reach out.
+
+Thank you for your understanding and patience.
+
+Best regards,
+
+[Your Name]  
+[Your Position]  
+[Your Contact Information]  
+[Company Name]
+
+---
+
+Feel free to customize this template to better fit your situation and company's communication style.
+
 To include the context about the performance issues causing a postponement of the production date, you can add a brief introductory section to your request. Here's how you can incorporate this information:
 
 ---
