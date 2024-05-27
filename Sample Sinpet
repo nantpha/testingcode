@@ -1,4 +1,21 @@
+To ask for help regarding the issue with the Confluence page, you can draft a message like this:
 
+---
+
+Hi Team,
+
+I've documented the changes I made in the app on this Confluence page [insert link to the page]. After adding the Dynatrace changes, we are experiencing issues with the application health check using GLB (Global Load Balancer).
+
+Could someone please help me troubleshoot and resolve this issue?
+
+Thank you!
+
+Best regards,  
+[Your Name]
+
+---
+
+Make sure to include the link to the Confluence page and any relevant details that might help others understand and diagnose the problem more efficiently.
 Subject: Request for Assistance in Creating a Dashboard for gRPC Channel and Thread Information
 
 Dear [Recipient's Name],
