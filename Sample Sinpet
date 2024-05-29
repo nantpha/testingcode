@@ -1,4 +1,43 @@
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class UserCounter {
+
+    // Static ConcurrentHashMap to hold the count for each user
+    private static final ConcurrentHashMap<String, AtomicInteger> userCounts = new ConcurrentHashMap<>();
+
+    // Static method to increment the count for a given user
+    public static void incrementCount(String userName) {
+        // Get the AtomicInteger for the given user, or create it if it doesn't exist
+        userCounts.computeIfAbsent(userName, key -> new AtomicInteger(0)).incrementAndGet();
+    }
+
+    // Static method to get the count for a given user
+    public static int getCount(String userName) {
+        // Get the AtomicInteger for the given user, or return 0 if the user doesn't exist
+        return userCounts.getOrDefault(userName, new AtomicInteger(0)).get();
+    }
+
+    public static void main(String[] args) {
+        // Simulate accessing users
+        incrementCount("Alice");
+        incrementCount("Bob");
+        incrementCount("Alice");
+        incrementCount("Alice");
+        incrementCount("Bob");
+
+        // Print the counts for each user
+        System.out.println("Count for Alice: " + getCount("Alice")); // Output should be 3
+        System.out.println("Count for Bob: " + getCount("Bob"));     // Output should be 2
+        System.out.println("Count for Charlie: " + getCount("Charlie")); // Output should be 0 (if Charlie is not accessed)
+    }
+}
+
+
+
+
+
 Certainly! Here's an alternative phrasing:
 
 "Thanks a lot for your assistance. We'll review the dashboard and contact you if we have any queries. I'll also look into 000."
