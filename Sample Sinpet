@@ -1,4 +1,60 @@
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+public class UserCounter {
+
+    // Static ConcurrentHashMap to hold the count for each user
+    private static final ConcurrentHashMap<String, AtomicInteger> userCounts = new ConcurrentHashMap<>();
+
+    // Static method to increment the count for a given user
+    public static void incrementCount(String userName) {
+        // Get the AtomicInteger for the given user, or create it if it doesn't exist
+        AtomicInteger count = userCounts.computeIfAbsent(userName, key -> new AtomicInteger(0));
+        int newCount = count.incrementAndGet();
+
+        // Log a message if the count is a multiple of 5
+        if (newCount % 5 == 0) {
+            System.out.println("User " + userName + " has reached " + newCount + " increments.");
+        }
+    }
+
+    // Static method to get the count for a given user
+    public static int getCount(String userName) {
+        // Get the AtomicInteger for the given user, or return 0 if the user doesn't exist
+        return userCounts.getOrDefault(userName, new AtomicInteger(0)).get();
+    }
+
+    // Static method to clear the count for a specific user
+    public static void clearCount(String userName) {
+        userCounts.remove(userName);
+    }
+
+    public static void main(String[] args) {
+        // Simulate accessing users
+        incrementCount("Alice");
+        incrementCount("Bob");
+        incrementCount("Alice");
+        incrementCount("Alice");
+        incrementCount("Bob");
+        incrementCount("Alice"); // 5th increment for Alice, should log a message
+        incrementCount("Alice"); // 6th increment for Alice
+        incrementCount("Bob");   // 3rd increment for Bob
+        incrementCount("Bob");   // 4th increment for Bob
+        incrementCount("Bob");   // 5th increment for Bob, should log a message
+
+        // Print the counts for each user
+        System.out.println("Count for Alice: " + getCount("Alice")); // Output should be 6
+        System.out.println("Count for Bob: " + getCount("Bob"));     // Output should be 5
+
+        // Clear the count for a specific user
+        clearCount("Alice");
+
+        // Print the counts after clearing Alice's count
+        System.out.println("After clearing Alice's count:");
+        System.out.println("Count for Alice: " + getCount("Alice")); // Output should be 0
+        System.out.println("Count for Bob: " + getCount("Bob"));     // Output should still be 5
+    }
+}
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
