@@ -1,3 +1,26 @@
+
+public class Main {
+    public static void main(String[] args) {
+        String s = "{ student={name=nn}}";
+
+        // Remove the outer braces
+        s = s.substring(1, s.length() - 1).trim();
+
+        // Split by the outer assignment
+        String[] outerParts = s.split("=", 2);
+        String innerPart = outerParts[1].trim();
+
+        // Remove the inner braces
+        innerPart = innerPart.substring(1, innerPart.length() - 1).trim();
+
+        // Split by the inner assignment
+        String[] innerParts = innerPart.split("=", 2);
+        String name = innerParts[1].trim();
+
+        System.out.println("name: " + name);
+    }
+}
+
 https://www.linkedin.com/in/aishwarya-nara-86919421a/
 
 
