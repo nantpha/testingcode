@@ -1,4 +1,70 @@
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+impimport software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.Upload;
+import software.amazon.awssdk.transfer.s3.model.UploadRequest;
+import software.amazon.awssdk.transfer.s3.progress.LoggingTransferListener;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.CompletableFuture;
+
+public class S3MultipartAsyncUpload {
+
+    public static void main(String[] args) {
+        // Define the bucket name, key (file name in S3), and the path to the file you want to upload
+        String bucketName = "your-bucket-name";
+        String key = "your-key";
+        Path filePath = Paths.get("path/to/your/large/file");
+
+        // Create an S3AsyncClient
+        S3AsyncClient s3AsyncClient = S3AsyncClient.builder()
+                .region(Region.US_EAST_1) // Specify your region
+                .credentialsProvider(ProfileCredentialsProvider.create())
+                .build();
+
+        // Create an S3TransferManager with a configured Upload configuration for parallel uploads
+        S3TransferManager transferManager = S3TransferManager.builder()
+                .s3Client(s3AsyncClient)
+                .build();
+
+        // Create an UploadRequest with the UploadConfiguration
+        UploadRequest uploadRequest = UploadRequest.builder()
+                .putObjectRequest(PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build())
+                .source(filePath)
+                .overrideConfiguration(c -> c.addListener(LoggingTransferListener.create()))
+                .build();
+
+        // Perform the multipart upload
+        Upload upload = transferManager.upload(uploadRequest);
+
+        // Get a CompletableFuture to handle the response asynchronously
+        CompletableFuture<CompletedUpload> futureResponse = upload.completionFuture()
+                .whenComplete((response, exception) -> {
+                    if (exception != null) {
+                        System.err.println("Upload failed: " + exception.getMessage());
+                    } else {
+                        System.out.println("Upload succeeded: " + response);
+                    }
+                });
+
+        // You can do other tasks while the upload is in progress
+        futureResponse.join(); // Wait for the upload to complete if necessary
+
+        // Clean up the transfer manager and client
+        transferManager.close();
+        s3AsyncClient.close();
+    }
+}
+
+
+
+ort software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
