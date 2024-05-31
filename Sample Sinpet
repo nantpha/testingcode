@@ -1,4 +1,80 @@
+Yes, you can write conditions in GraphQL queries using arguments, variables, and directives. Here's a brief overview of how each of these can be used to introduce conditions:
 
+1. **Arguments**:
+   You can pass arguments to fields to filter or conditionally fetch data.
+
+   ```graphql
+   query {
+     users(active: true) {
+       id
+       name
+     }
+   }
+   ```
+
+2. **Variables**:
+   You can use variables to dynamically change the values of arguments in your queries.
+
+   ```graphql
+   query GetUsers($isActive: Boolean!) {
+     users(active: $isActive) {
+       id
+       name
+     }
+   }
+   ```
+
+   When you execute the query, you provide the value for `$isActive`:
+
+   ```json
+   {
+     "isActive": true
+   }
+   ```
+
+3. **Directives**:
+   GraphQL provides built-in directives like `@include` and `@skip` to conditionally include or exclude fields based on boolean values.
+
+   ```graphql
+   query GetUsers($includeAddress: Boolean!) {
+     users {
+       id
+       name
+       address @include(if: $includeAddress)
+     }
+   }
+   ```
+
+   When you execute the query, you provide the value for `$includeAddress`:
+
+   ```json
+   {
+     "includeAddress": true
+   }
+   ```
+
+Here's an example using these concepts together:
+
+```graphql
+query GetUsers($isActive: Boolean!, $includeAddress: Boolean!) {
+  users(active: $isActive) {
+    id
+    name
+    address @include(if: $includeAddress)
+  }
+}
+```
+
+And the variables:
+
+```json
+{
+  "isActive": true,
+  "includeAddress": false
+}
+```
+
+In this example, the query fetches users based on their active status and conditionally includes the address field based on the value of `$includeAddress`.
 Here’s a concise Slack message for your team:
 
 ---
