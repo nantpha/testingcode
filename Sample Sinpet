@@ -1,3 +1,46 @@
+Certainly! Here’s a draft email you can use to inform your team about the new feature:
+
+---
+
+**Subject: New Feature Implemented: Overall Call Duration Tracking**
+
+Hi Team,
+
+I hope this email finds you well.
+
+I am pleased to inform you that we have successfully implemented a new feature in our application to track the overall call duration for conversations. This feature has been merged into the development branch and is now available for testing.
+
+### Key Updates:
+- **Database Schema**: A new field has been added to store the total call duration.
+- **Backend Logic**: The system now calculates and stores the call duration at the end of each call.
+- **API Updates**: All relevant APIs have been updated to include the call duration data.
+- **Frontend**: The UI has been updated to display the call duration in the conversation details.
+
+### Next Steps:
+1. **Testing**:
+   - Please conduct thorough testing to ensure the new feature works as expected.
+   - Report any issues or bugs in our tracking system.
+
+2. **Documentation**:
+   - The documentation has been updated to reflect these changes. Please review it [here](insert link to documentation).
+
+3. **Feedback**:
+   - We welcome your feedback on this new feature. Let us know if there are any additional enhancements or modifications needed.
+
+Thank you for your attention to this update. Let’s ensure everything is working perfectly before we roll it out to production.
+
+Best regards,
+
+[Your Name]  
+[Your Position]  
+[Your Contact Information]
+
+---
+
+Feel free to customize the email as needed to better fit your context and communication style.
+
+
+
 Yes, you can write conditions in GraphQL queries using arguments, variables, and directives. Here's a brief overview of how each of these can be used to introduce conditions:
 
 1. **Arguments**:
