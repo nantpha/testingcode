@@ -1,3 +1,58 @@
+
+Understood. Here’s an updated email draft that includes information about the feature separating first and last names into different fields/groups:
+
+---
+
+**Subject: New Features Implemented: Overall Call Duration Tracking and Separate First/Last Name Fields**
+
+Hi Team,
+
+I hope this email finds you well.
+
+I am pleased to inform you that we have successfully implemented two new features in our application:
+
+1. **Overall Call Duration Tracking**
+2. **Separate First and Last Name Fields**
+
+These features have been merged into the development branch and are now available for testing.
+
+### Key Updates:
+
+#### Overall Call Duration Tracking
+- **Database Schema**: A new field has been added to store the total call duration.
+- **Backend Logic**: The system now calculates and stores the call duration at the end of each call.
+- **API Updates**: All relevant APIs have been updated to include the call duration data.
+- **Frontend**: The UI has been updated to display the call duration in the conversation details.
+
+#### Separate First and Last Name Fields
+- **Database Schema**: Fields for first name and last name have been separated.
+- **Backend Logic**: Adjustments have been made to handle first and last names separately in all relevant processes.
+- **API Updates**: APIs now provide and accept first and last names as separate fields.
+- **Frontend**: The UI has been updated to display and handle first and last names separately.
+
+### Next Steps:
+1. **Testing**:
+   - Please conduct thorough testing to ensure both new features work as expected.
+   - Report any issues or bugs in our tracking system.
+
+2. **Documentation**:
+   - The documentation has been updated to reflect these changes. Please review it [here](insert link to documentation).
+
+3. **Feedback**:
+   - We welcome your feedback on these new features. Let us know if there are any additional enhancements or modifications needed.
+
+Thank you for your attention to this update. Let’s ensure everything is working perfectly before we roll it out to production.
+
+Best regards,
+
+[First Name] [Last Name]  
+[Your Position]  
+[Your Contact Information]
+
+---
+
+Please replace `[First Name]` and `[Last Name]` with your actual first and last names. Also, update `[Your Position]` and `[Your Contact Information]` with your relevant details.
+
 Sure, here's a concise and clear reply:
 
 ---
