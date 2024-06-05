@@ -1,3 +1,119 @@
+Sure! Here’s how you can structure the documentation for the new features, including the overall call duration and the separate first and last name fields:
+
+---
+
+# Application Update Documentation
+
+## New Features
+
+### 1. Overall Call Duration Tracking
+
+#### Description
+We have added a new feature to track the total duration of calls within a conversation. This enhancement provides more comprehensive insights into call metrics.
+
+#### Database Changes
+- A new field `total_call_duration` has been added to the conversation table.
+- Ensure that the database schema is updated to include this new field.
+
+#### Backend Changes
+- Logic has been implemented to calculate the total call duration at the end of each call.
+- Relevant APIs have been updated to include the `total_call_duration` field.
+
+#### API Changes
+- **Endpoint**: `/api/conversations`
+  - **Response**:
+    ```json
+    {
+      "conversation_id": "12345",
+      "total_call_duration": "00:15:30",
+      ...
+    }
+    ```
+- **Endpoint**: `/api/conversation/{id}`
+  - **Response**:
+    ```json
+    {
+      "conversation_id": "12345",
+      "total_call_duration": "00:15:30",
+      ...
+    }
+    ```
+
+#### Frontend Changes
+- The UI has been updated to display the total call duration in the conversation details section.
+- Example display:
+  ```
+  Conversation Details:
+  - Total Call Duration: 15 minutes 30 seconds
+  ```
+
+### 2. Separate First and Last Name Fields
+
+#### Description
+We have separated the first and last name fields to improve data organization and handling.
+
+#### Database Changes
+- Two new fields, `first_name` and `last_name`, have been added to the user table.
+- Ensure that the database schema is updated to reflect these changes.
+
+#### Backend Changes
+- Adjustments have been made to handle first and last names separately in all relevant processes.
+- Relevant APIs have been updated to accept and return first and last names as separate fields.
+
+#### API Changes
+- **Endpoint**: `/api/users`
+  - **Request**:
+    ```json
+    {
+      "first_name": "John",
+      "last_name": "Doe",
+      ...
+    }
+    ```
+  - **Response**:
+    ```json
+    {
+      "user_id": "123",
+      "first_name": "John",
+      "last_name": "Doe",
+      ...
+    }
+    ```
+- **Endpoint**: `/api/user/{id}`
+  - **Response**:
+    ```json
+    {
+      "user_id": "123",
+      "first_name": "John",
+      "last_name": "Doe",
+      ...
+    }
+    ```
+
+#### Frontend Changes
+- The UI has been updated to handle and display first and last names separately.
+- Example display:
+  ```
+  User Details:
+  - First Name: John
+  - Last Name: Doe
+  ```
+
+## Testing
+- Conduct thorough testing to ensure both new features work as expected.
+- Perform unit tests, integration tests, and end-to-end tests.
+- Report any issues or bugs in the tracking system.
+
+## Deployment
+- Ensure that all database migrations are executed properly.
+- Verify that all changes are deployed successfully across staging and production environments.
+
+## Documentation Link
+- [Updated Documentation](insert link here)
+
+---
+
+This format provides a clear and comprehensive guide to the new features, including changes to the database, backend, frontend, and APIs, as well as instructions for testing and deployment.
 
 Understood. Here’s an updated email draft that includes information about the feature separating first and last names into different fields/groups:
 
