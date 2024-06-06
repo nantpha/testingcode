@@ -1,4 +1,26 @@
+package com.example.demo.controller;
 
+import com.example.demo.service.FileUploadService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.io.File;
+
+@RestController
+public class TestController {
+
+    @Autowired
+    private FileUploadService fileUploadService;
+
+    @GetMapping("/test-upload")
+    public String testUpload() {
+        File file = new File("path/to/your/file.txt");
+        String uploadUrl = "http://localhost:8080/api/files/upload"; // Your API endpoint
+
+        return fileUploadService.uploadFile(uploadUrl, file);
+    }
+}
 
 package com.example.demo.service;
 
