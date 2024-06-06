@@ -1,4 +1,85 @@
 
+
+package com.example.demo.service;
+
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+
+import java.io.File;
+
+@Service
+public class FileUploadService {
+
+    private final RestTemplate restTemplate;
+
+    public FileUploadService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    public String uploadFile(String uploadUrl, File file) {
+        // Create headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        // Create multipart body
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new FileSystemResource(file));
+
+        // Build the request
+        HttpEntity<?> entity = new HttpEntity<>(builder.build(), headers);
+
+        // Send the request
+        ResponseEntity<String> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, entity, String.class);
+
+        return response.getBody();
+    }
+}
+
+
+spring.servlet.multipart.enabled=true
+spring.servlet.multipart.max-file-size=2MB
+spring.servlet.multipart.max-request-size=2MB
+
+
+package com.example.demo.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+
+import java.io.IOException;
+
+@RestController
+@RequestMapping("/api/files")
+public class FileUploadController {
+
+    @PostMapping("/upload")
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("File is empty");
+        }
+
+        try {
+            // Process the file (e.g., save it to the server, analyze content, etc.)
+            String fileName = file.getOriginalFilename();
+            byte[] bytes = file.getBytes();
+            // Save file logic goes here (if needed)
+
+            return ResponseEntity.status(HttpStatus.OK).body("File uploaded successfully: " + fileName);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload file");
+        }
+    }
+}
 Certainly! Here are a few more ways to express that you have started learning AWS Connect:
 
 1. "I have begun studying AWS Connect."
