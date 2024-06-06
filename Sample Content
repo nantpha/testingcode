@@ -1,5 +1,39 @@
 
+package com.example.demo.controller;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+@RestController
+@RequestMapping("/api/files")
+public class FileUploadController {
+
+    private static final Path UPLOAD_DIR = Paths.get("uploads");
+
+    public FileUploadController() throws Exception {
+        Files.createDirectories(UPLOAD_DIR);
+    }
+
+    @PostMapping(value = "/upload", consumes = "multipart/form-data")
+    public Mono<ResponseEntity<String>> uploadFile(@RequestPart("file") Flux<FilePart> fileParts) {
+        return fileParts
+                .flatMap(this::saveFile)
+                .then(Mono.just(ResponseEntity.ok("Files uploaded successfully")))
+                .onErrorResume(e -> Mono.just(ResponseEntity.status(500).body("Failed to upload files: " + e.getMessage())));
+    }
+
+    private Mono<Void> saveFile(FilePart filePart) {
+        Path destination = UPLOAD_DIR.resolve(filePart.filename());
+        return filePart.transferTo(destination);
+    }
+}
 package com.example.demo.controller;
 
 import com.example.demo.service.FileUploadService;
