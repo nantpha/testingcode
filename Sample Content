@@ -1,4 +1,6 @@
+You could say something like:
 
+"I've started reading the documentation shared by the documentation team."
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
