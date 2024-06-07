@@ -1,3 +1,41 @@
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.ServerWebInputException;
+import org.springframework.web.multipart.support.FilePart;
+import reactor.core.publisher.Mono;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+@RestController
+@RequestMapping("/upload")
+public class FileUploadController {
+
+    @Value("${upload.dir:/tmp/uploads}")
+    private String uploadDir;
+
+    @PostMapping
+    public Mono<ResponseEntity<String>> uploadFile(ServerWebExchange exchange) {
+        return exchange.getMultipartData()
+                .flatMap(parts -> {
+                    FilePart filePart = (FilePart) parts.toSingleValueMap().get("file");
+                    if (filePart == null) {
+                        throw new ServerWebInputException("Missing file part");
+                    }
+                    Path destination = Paths.get(uploadDir + "/" + filePart.filename());
+                    return filePart.transferTo(destination)
+                            .then(Mono.just(ResponseEntity.status(HttpStatus.OK)
+                                    .body("File uploaded successfully: " + filePart.filename())));
+                });
+    }
+}
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
