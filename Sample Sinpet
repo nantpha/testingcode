@@ -1,3 +1,149 @@
+
+Got it! We'll adjust the Python script to generate JUnit test cases for the extracted Java methods. Here's how you can achieve that:
+
+### Step-by-Step Guide
+
+1. **Read the Java Class File:**
+   - Read the content of the Java file to extract method signatures.
+
+2. **Generate JUnit Test Cases:**
+   - Use the extracted method information to create corresponding JUnit test cases in Java.
+
+### Python Script
+
+```python
+import re
+
+# Function to read a Java file
+def read_java_file(file_path):
+    with open(file_path, 'r') as file:
+        return file.read()
+
+# Function to extract method signatures from Java class
+def extract_methods(java_code):
+    method_pattern = re.compile(r'public\s+(\w+)\s+(\w+)\(([^)]*)\)\s*{')
+    methods = method_pattern.findall(java_code)
+    return methods
+
+# Function to generate JUnit test cases based on extracted methods
+def generate_test_cases(class_name, methods):
+    test_cases = []
+    for return_type, method_name, params in methods:
+        param_names = [param.split()[-1] for param in params.split(',') if param]  # Handle empty params
+        param_list = ', '.join(param_names)
+        test_case = f"""
+    @Test
+    public void test_{method_name}() {{
+        // TODO: Implement test logic for {method_name}
+        {class_name} calculator = new {class_name}();
+        {return_type} result = calculator.{method_name}({param_list});
+        // assertEquals(expected_value, result);
+    }}
+"""
+        test_cases.append(test_case)
+    return test_cases
+
+# Main function to execute the script
+def main(java_file_path, class_name):
+    java_code = read_java_file(java_file_path)
+    methods = extract_methods(java_code)
+    test_cases = generate_test_cases(class_name, methods)
+
+    # Print generated test cases
+    print(f"import static org.junit.Assert.assertEquals;")
+    print(f"import org.junit.Test;\n")
+    print(f"public class {class_name}Test {{")
+    for test_case in test_cases:
+        print(test_case)
+    print("}")
+
+# Replace 'Calculator.java' with your Java file path and 'Calculator' with your class name
+java_file_path = 'Calculator.java'
+class_name = 'Calculator'
+main(java_file_path, class_name)
+```
+
+### Explanation
+
+1. **Read the Java File:**
+   - The `read_java_file` function reads the content of a Java file.
+
+2. **Extract Method Signatures:**
+   - The `extract_methods` function uses a regular expression to find method signatures in the Java class.
+   - It captures the return type, method name, and parameters.
+
+3. **Generate JUnit Test Cases:**
+   - The `generate_test_cases` function creates a test function for each method found.
+   - It constructs a template for each test case with placeholders for the method call and assertions.
+
+4. **Main Function:**
+   - The `main` function ties everything together, reading the Java file, extracting methods, generating test cases, and printing them.
+
+### Usage
+
+Save the script in a Python file, for example, `generate_tests.py`. Make sure you have a Java file, e.g., `Calculator.java`, in the same directory with the following content:
+
+```java
+public class Calculator {
+    public int add(int a, int b) {
+        return a + b;
+    }
+
+    public int subtract(int a, int b) {
+        return a - b;
+    }
+
+    public int multiply(int a, int b) {
+        return a * b;
+    }
+}
+```
+
+Run the Python script:
+
+```bash
+python generate_tests.py
+```
+
+The output will be:
+
+```java
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+
+public class CalculatorTest {
+
+    @Test
+    public void test_add() {
+        // TODO: Implement test logic for add
+        Calculator calculator = new Calculator();
+        int result = calculator.add(a, b);
+        // assertEquals(expected_value, result);
+    }
+
+    @Test
+    public void test_subtract() {
+        // TODO: Implement test logic for subtract
+        Calculator calculator = new Calculator();
+        int result = calculator.subtract(a, b);
+        // assertEquals(expected_value, result);
+    }
+
+    @Test
+    public void test_multiply() {
+        // TODO: Implement test logic for multiply
+        Calculator calculator = new Calculator();
+        int result = calculator.multiply(a, b);
+        // assertEquals(expected_value, result);
+    }
+}
+```
+
+### Summary
+
+This script automates the generation of JUnit test cases based on the methods in a given Java class file. Adjust the script to fit the structure of your Java code
+
+
 Certainly! To generate Python logic that can automatically create test cases for given Java methods using Codetestral-latest, you can follow these steps:
 
 1. **Parse the Java Class:**
