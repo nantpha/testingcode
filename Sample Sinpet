@@ -1,3 +1,31 @@
+
+def test_add():
+    # TODO: Implement test logic for add
+    # Example:
+    # calculator = Calculator()
+    # result = calculator.add(a, b)
+    # assert result == expected_value
+    pass
+
+
+def test_subtract():
+    # TODO: Implement test logic for subtract
+    # Example:
+    # calculator = Calculator()
+    # result = calculator.subtract(a, b)
+    # assert result == expected_value
+    pass
+
+
+def test_multiply():
+    # TODO: Implement test logic for multiply
+    # Example:
+    # calculator = Calculator()
+    # result = calculator.multiply(a, b)
+    # assert result == expected_value
+    pass
+
+
 Great! Let's create a test case for a Java function using JUnit. We'll walk through an example to illustrate the process.
 
 ### Example Scenario
