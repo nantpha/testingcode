@@ -1,3 +1,62 @@
+import streamlit as st
+import re
+from transformers import pipeline
+
+# Function to extract Java functions
+def extract_functions(file_content):
+    pattern = r'public\s+.*?\s+(\w+)\s*\(.*?\)\s*\{.*?\}'
+    matches = re.findall(pattern, file_content, re.DOTALL)
+    functions = {match: re.search(rf'public\s+.*?\s+{match}\s*\(.*?\)\s*\{{.*?\}}', file_content, re.DOTALL).group(0) for match in matches}
+    return functions
+
+# Function to generate test cases
+def generate_test_cases(function_code, model_name):
+    # Load the selected language model
+    model = pipeline("text-generation", model=model_name)
+    
+    # Prepare prompt for test case generation
+    prompt = f"Generate test cases for the following Java function:\n\n{function_code}\n\nTest cases:"
+    
+    # Generate test cases
+    response = model(prompt, max_length=200)
+    
+    # Extract test cases from response
+    test_cases = response[0]['generated_text']
+    return test_cases
+
+# Streamlit app
+st.title("Java Function Test Case Generator")
+
+# File upload
+uploaded_file = st.file_uploader("Choose a .java file", type="java")
+
+if uploaded_file is not None:
+    file_content = uploaded_file.read().decode("utf-8")
+    
+    st.success("File uploaded successfully")
+    st.text_area("Uploaded Java File", file_content, height=400)
+    
+    functions = extract_functions(file_content)
+    
+    if functions:
+        # Model selection
+        model_options = ["gpt-2", "EleutherAI/gpt-neo-2.7B", "facebook/opt-1.3b", "mistral-7b"]
+        selected_model = st.selectbox("Select a model for generating test cases", model_options)
+        
+        for function_name, function_code in functions.items():
+            st.subheader(f"Function: {function_name}")
+            st.code(function_code, language='java')
+            
+            if st.button(f"Generate Test Cases for {function_name}", key=function_name):
+                test_cases = generate_test_cases(function_code, selected_model)
+                st.text_area(f"Generated Test Cases for {function_name}", test_cases, height=200)
+    else:
+        st.error("No functions found in the uploaded file")
+
+
+
+
+
 
 Assume that you are working on a few main thread exception scenarios such as:
 1. When your java class is compiled from another JDK version, then this exception comes and you try to run it from another java version.
