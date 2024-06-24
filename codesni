@@ -1,3 +1,73 @@
+import javalang
+import openai
+import json
+
+# Function to parse the .java file
+def parse_java_file(java_file_path):
+    with open(java_file_path, 'r') as file:
+        java_code = file.read()
+
+    tree = javalang.parse.parse(java_code)
+    methods = []
+    
+    for path, node in tree.filter(javalang.tree.MethodDeclaration):
+        method_info = {
+            'name': node.name,
+            'return_type': node.return_type.name if node.return_type else 'void',
+            'parameters': [(param.type.name, param.name) for param in node.parameters]
+        }
+        methods.append(method_info)
+    
+    return methods
+
+# Function to analyze the model
+def analyze_model(model_path):
+    with open(model_path, 'r') as file:
+        model = json.load(file)
+    return model
+
+# Function to generate test cases using Mistral-7B
+def generate_test_cases_with_mistral(methods, model, api_key):
+    test_cases = []
+    openai.api_key = api_key
+    
+    for method in methods:
+        method_name = method['name']
+        if method_name in model:
+            expected_behavior = model[method_name]
+            
+            prompt = f"Generate test cases for the Java method: {method_name} with parameters {method['parameters']} and return type {method['return_type']}.\nExpected behavior: {expected_behavior}\n"
+            response = openai.Completion.create(
+                engine="mistral-7b",  # Replace with the appropriate Mistral-7B engine identifier
+                prompt=prompt,
+                max_tokens=200
+            )
+            
+            test_cases.append(response.choices[0].text.strip())
+    
+    return test_cases
+
+# Paths to the .java file and model file
+java_file_path = 'path/to/your/Example.java'
+model_path = 'path/to/your/model.json'
+
+# Parse the .java file
+methods = parse_java_file(java_file_path)
+
+# Analyze the model
+model = analyze_model(model_path)
+
+# Generate test cases using Mistral-7B
+api_key = 'your_openai_api_key'  # Replace with your actual OpenAI API key
+test_cases = generate_test_cases_with_mistral(methods, model, api_key)
+
+# Print generated test cases
+for test_case in test_cases:
+    print(test_case)
+
+
+
+*******************************************************************************************
 import streamlit as st
 import re
 from transformers import pipeline
