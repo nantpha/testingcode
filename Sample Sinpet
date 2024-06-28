@@ -1,4 +1,72 @@
+Sure, here's a step-by-step guide to writing a test case and implementing the logic for adding two numbers in Java:
 
+### 1. Write the Test Case
+
+First, we will write a test case using JUnit, a popular testing framework in Java. Ensure you have JUnit added to your project dependencies.
+
+#### Test Case Code
+```java
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+
+public class CalculatorTest {
+
+    @Test
+    public void testAdd() {
+        Calculator calculator = new Calculator();
+        int result = calculator.add(2, 3);
+        assertEquals(5, result, "2 + 3 should equal 5");
+    }
+}
+```
+
+### 2. Implement the Logic
+
+Next, we will implement the logic for adding two numbers in the `Calculator` class.
+
+#### Calculator Code
+```java
+public class Calculator {
+
+    public int add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+### 3. Run the Test
+
+To run the test, you can use your IDE's built-in test runner, or you can use a build tool like Maven or Gradle. For simplicity, here's how you can run the test from the command line if you're using Maven:
+
+1. Make sure you have `maven` installed.
+2. Navigate to your project directory.
+3. Run the following command:
+
+```sh
+mvn test
+```
+
+This will compile your code and run the test case. If everything is correct, you should see a success message indicating that your test passed.
+
+### Full Project Structure
+
+Here is how your project structure might look:
+
+```
+/project-root
+    /src
+        /main
+            /java
+                Calculator.java
+        /test
+            /java
+                CalculatorTest.java
+    pom.xml (if using Maven)
+```
+
+### Additional Notes
+
+- Ensure your project setup includes JUnit. If
 Here's an updated version that includes appreciation for working with the team members:
 
 ---
