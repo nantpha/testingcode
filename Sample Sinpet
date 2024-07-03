@@ -1,3 +1,13 @@
+
+You could say:
+
+"Your request has been rejected. Could you please resubmit it?"
+
+Or more formally:
+
+"Unfortunately, your request has been denied. Kindly resubmit for further consideration."
+
+
 If you're looking for an alternative to `io.github.resilience4j`, you can use Netflix's Hystrix, which was one of the original circuit breaker implementations. However, Hystrix has been in maintenance mode for some time, so it's generally recommended to use newer libraries like Resilience4j. Another alternative is Spring Cloud Circuit Breaker, which provides an abstraction layer and allows you to switch implementations easily.
 
 ### Using Spring Cloud Circuit Breaker with Resilience4j
