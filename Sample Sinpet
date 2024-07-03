@@ -1,4 +1,160 @@
+Yes, you can implement a circuit breaker using Resilience4j without using annotations. Instead, you can configure and use the circuit breaker programmatically. Here’s how you can achieve that with Spring WebClient and Resilience4j, and return a `Flux` as the response.
 
+### 1. Add Dependencies
+
+Ensure you have the necessary dependencies in your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-webflux</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.github.resilience4j</groupId>
+    <artifactId>resilience4j-spring-boot2</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.github.resilience4j</groupId>
+    <artifactId>resilience4j-reactor</artifactId>
+</dependency>
+```
+
+### 2. Configure Circuit Breaker
+
+Configure your circuit breaker in the `application.yml` file:
+
+```yaml
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      myService:
+        baseConfig: default
+```
+
+### 3. Create a Circuit Breaker Configuration
+
+Create a configuration class to set up the circuit breaker:
+
+```java
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class Resilience4jConfig {
+
+    @Bean
+    public CircuitBreakerRegistry circuitBreakerRegistry() {
+        CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
+                .failureRateThreshold(50)
+                .waitDurationInOpenState(Duration.ofSeconds(10))
+                .slidingWindowSize(10)
+                .build();
+
+        return CircuitBreakerRegistry.of(circuitBreakerConfig);
+    }
+
+    @Bean
+    public CircuitBreaker circuitBreaker(CircuitBreakerRegistry circuitBreakerRegistry) {
+        return circuitBreakerRegistry.circuitBreaker("myService");
+    }
+}
+```
+
+### 4. Use Circuit Breaker in a Service
+
+Create a service class to use the circuit breaker programmatically:
+
+```java
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+
+@Service
+public class MyService {
+
+    private final WebClient webClient;
+    private final CircuitBreaker circuitBreaker;
+
+    public MyService(WebClient.Builder webClientBuilder, CircuitBreakerRegistry circuitBreakerRegistry) {
+        this.webClient = webClientBuilder.baseUrl("http://example.com").build();
+        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("myService");
+    }
+
+    public Flux<String> makeRequest() {
+        return webClient.get()
+                        .uri("/api")
+                        .retrieve()
+                        .bodyToFlux(String.class)
+                        .transform(CircuitBreakerOperator.of(circuitBreaker))
+                        .onErrorResume(throwable -> Flux.just("Fallback response: Service is currently unavailable. Please try again later."));
+    }
+}
+```
+
+### 5. Configure WebClient Bean
+
+Configure a `WebClient.Builder` bean in your application context:
+
+```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.reactive.function.client.WebClient;
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
+}
+```
+
+### 6. Controller to Test the Service
+
+Create a controller to test the service and return the response as a `Flux`:
+
+```java
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
+
+@RestController
+public class MyController {
+
+    private final MyService myService;
+
+    public MyController(MyService myService) {
+        this.myService = myService;
+    }
+
+    @GetMapping("/test")
+    public Flux<String> test() {
+        return myService.makeRequest();
+    }
+}
+```
+
+### 7. Run the Application
+
+Now, when you run your Spring Boot application and make a request to the `/test` endpoint, the circuit breaker will monitor the calls to the external API. If the API fails or is slow, the circuit breaker will open, and the fallback method will be called, returning the fallback response as a `Flux`.
+
+This setup ensures that your service can handle failures gracefully and provides a mechanism for retrying requests automatically using Spring WebClient and Resilience4j's circuit breaker without relying on annotations.
 You could say:
 
 "Your request has been rejected. Could you please resubmit it?"
