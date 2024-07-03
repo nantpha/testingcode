@@ -1,3 +1,150 @@
+To implement a circuit breaker in a Spring Boot application using Java, you can use the Resilience4j library, which provides easy-to-use annotations and configuration for resilience patterns like circuit breakers. Below is an example of how to set up and use a circuit breaker in a Spring Boot application.
+
+### 1. Add Dependencies
+
+First, add the necessary dependencies to your `pom.xml` file:
+
+```xml
+<dependency>
+    <groupId>io.github.resilience4j</groupId>
+    <artifactId>resilience4j-spring-boot2</artifactId>
+    <version>1.7.1</version>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-aop</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+### 2. Enable Circuit Breaker
+
+Enable circuit breaker functionality in your Spring Boot application by adding the `@EnableCircuitBreaker` annotation to your main application class:
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
+
+@SpringBootApplication
+@EnableCircuitBreaker
+public class DemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
+}
+```
+
+### 3. Configure Circuit Breaker
+
+You can configure your circuit breaker in the `application.yml` file:
+
+```yaml
+resilience4j.circuitbreaker:
+  instances:
+    myService:
+      registerHealthIndicator: true
+      slidingWindowSize: 10
+      minimumNumberOfCalls: 5
+      permittedNumberOfCallsInHalfOpenState: 3
+      waitDurationInOpenState: 10000
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 10
+```
+
+### 4. Use Circuit Breaker in a Service
+
+Create a service and annotate the method you want to protect with `@CircuitBreaker`. Specify the name of the circuit breaker instance you configured in `application.yml`.
+
+```java
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+@Service
+public class MyService {
+
+    private final RestTemplate restTemplate;
+
+    public MyService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    @CircuitBreaker(name = "myService", fallbackMethod = "fallbackMethod")
+    public String makeRequest() {
+        return restTemplate.getForObject("http://example.com/api", String.class);
+    }
+
+    public String fallbackMethod(Throwable t) {
+        return "Fallback response";
+    }
+}
+```
+
+### 5. RestTemplate Bean Configuration
+
+You also need to configure a `RestTemplate` bean in your application context:
+
+```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+public class AppConfig {
+    
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+```
+
+### 6. Controller to Test the Service
+
+Create a controller to test the service:
+
+```java
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class MyController {
+
+    private final MyService myService;
+
+    public MyController(MyService myService) {
+        this.myService = myService;
+    }
+
+    @GetMapping("/test")
+    public String test() {
+        return myService.makeRequest();
+    }
+}
+```
+
+### 7. Run the Application
+
+Now, when you run your Spring Boot application and make a request to the `/test` endpoint, the circuit breaker will monitor the calls to the external API. If the API fails or is slow, the circuit breaker will open and the fallback method will be called, returning the fallback response.
+
+This example demonstrates how to integrate and use a circuit breaker in a Spring Boot application with Resilience4j.
+
+
+
+
+
+
+
+
+
+
+
+
 Sure, here's a step-by-step guide to writing a test case and implementing the logic for adding two numbers in Java:
 
 ### 1. Write the Test Case
