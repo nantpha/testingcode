@@ -1,4 +1,118 @@
-    
+    To handle a `Student` object that contains a `String` field and a `byte[]` field, you'll need to adjust the deserialization logic accordingly. Here's how you can modify your Spring Boot application to properly handle and print these fields.
+
+### 1. Update the `Student` Class
+
+First, update your `Student` class to include a `String` and a `byte[]` field:
+
+```java
+public class Student {
+    private String name;
+    private byte[] data;
+
+    // Getters and Setters
+
+    @Override
+    public String toString() {
+        return "Student{name='" + name + '\'' + ", data=" + new String(data) + '}';
+    }
+}
+```
+
+### 2. Configure Kafka to Deserialize JSON to `Student` Object
+
+Update your Kafka consumer configuration to properly handle the deserialization of `Student` objects:
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@EnableKafka
+@Configuration
+public class KafkaConsumerConfig {
+
+    @Bean
+    public ConsumerFactory<String, Student> consumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "my-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Student.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Student> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Student> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        return factory;
+    }
+}
+```
+
+### 3. Implement the Kafka Consumer to Handle `Student` Object
+
+Create the Kafka consumer to handle the `Student` payload and print it to the console:
+
+```java
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.listener.ConsumerSeekAware;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
+@Component
+public class KafkaConsumer implements ConsumerSeekAware {
+
+    @KafkaListener(topics = "your-topic", groupId = "my-group")
+    public void listen(ConsumerRecord<String, Student> record, Consumer<?, ?> consumer) {
+        // Print the Student object to the console
+        Student student = record.value();
+        System.out.println("Received Student: " + student + ", Offset: " + record.offset());
+    }
+
+    @Override
+    public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+        // Seek to a specific offset (for example, offset 10)
+        assignments.forEach((partition, offset) -> callback.seek(partition.topic(), partition.partition(), 10L));
+    }
+}
+```
+
+### 4. Run the Application
+
+When you run your Spring Boot application, it will seek to the specified offset (e.g., offset 10) and start printing the `Student` objects to the console.
+
+### Example Output
+
+The console output will look like this:
+
+```
+Received Student: Student{name='John Doe', data=[some byte data]}, Offset: 10
+Received Student: Student{name='Jane Smith', data=[other byte data]}, Offset: 11
+...
+```
+
+In the `toString` method of the `Student` class, `new String(data)` is used to convert the byte array to a readable string format for the console output. You might need to adjust this based on the actual content and encoding of your byte data.
 Yes, you can find and consume Kafka messages based on a specific offset or other criteria using Spring Boot and Java. Here's a step-by-step guide to help you get started:
 
 ### 1. Set Up Your Spring Boot Application
