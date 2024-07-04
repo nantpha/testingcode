@@ -1,3 +1,159 @@
+If you have a Kafka consumer configuration where the schema of the payload includes a string and a byte, you can use a schema registry to define and manage these schemas, or you can handle the deserialization manually in your code. Here’s how you can set up a Kafka consumer using Confluent’s Schema Registry with Avro, which is a common approach for handling schemas in Kafka.
+
+### Step 1: Add Dependencies
+
+Add the necessary dependencies for Kafka, Avro, and the Schema Registry in your `pom.xml`:
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka-clients</artifactId>
+        <version>3.2.1</version>
+    </dependency>
+    <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-avro-serializer</artifactId>
+        <version>7.0.1</version>
+    </dependency>
+    <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-schema-registry-client</artifactId>
+        <version>7.0.1</version>
+    </dependency>
+</dependencies>
+```
+
+### Step 2: Define the Avro Schema
+
+Define your Avro schema for the payload, for example in a file named `payload.avsc`:
+
+```json
+{
+  "type": "record",
+  "name": "Payload",
+  "fields": [
+    {"name": "stringVariable", "type": "string"},
+    {"name": "byteVariable", "type": "bytes"}
+  ]
+}
+```
+
+### Step 3: Generate Java Classes from Avro Schema
+
+Use the Avro tools to generate Java classes from your schema:
+
+```sh
+java -jar avro-tools-1.10.2.jar compile schema payload.avsc .
+```
+
+This will generate a `Payload.java` file with the necessary code to represent your schema.
+
+### Step 4: Configure Kafka Consumer
+
+Configure the Kafka consumer to use Avro deserialization:
+
+```java
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.util.Properties;
+
+public class KafkaConsumerConfig {
+
+    public static KafkaConsumer<String, Payload> createConsumer(String bootstrapServers, String groupId, String schemaRegistryUrl) {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
+        props.put("schema.registry.url", schemaRegistryUrl);
+        props.put("specific.avro.reader", "true");
+
+        return new KafkaConsumer<>(props);
+    }
+}
+```
+
+### Step 5: Consume Messages
+
+Consume messages from the Kafka topic and deserialize them using the Avro schema:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+
+import java.time.Duration;
+import java.util.Collections;
+
+public class KafkaConsumerExample {
+    public static void main(String[] args) {
+        String bootstrapServers = "localhost:9092";
+        String groupId = "my-group";
+        String topic = "my-topic";
+        String schemaRegistryUrl = "http://localhost:8081";
+
+        KafkaConsumer<String, Payload> consumer = KafkaConsumerConfig.createConsumer(bootstrapServers, groupId, schemaRegistryUrl);
+        consumer.subscribe(Collections.singletonList(topic));
+
+        while (true) {
+            ConsumerRecords<String, Payload> records = consumer.poll(Duration.ofMillis(100));
+
+            for (ConsumerRecord<String, Payload> record : records) {
+                Payload payload = record.value();
+                System.out.println("Consumed record with key " + record.key() + " and value " + payload);
+            }
+        }
+    }
+}
+```
+
+### Summary
+
+This example configures a Kafka consumer using Avro serialization with a Schema Registry. It sets up the necessary dependencies, defines the Avro schema, and generates Java classes from the schema. The consumer configuration uses the `KafkaAvroDeserializer` to deserialize the messages from the Kafka topic. This approach ensures that your schema is managed and versioned properly using Confluent’s Schema Registry.
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+
+import java.time.Duration;
+import java.util.Collections;
+
+public class KafkaConsumerExample {
+    public static void main(String[] args) {
+        String bootstrapServers = "localhost:9092";
+        String groupId = "my-group";
+        String topic = "my-topic";
+
+        KafkaConsumer<String, String> consumer = KafkaConsumerConfig.createConsumer(bootstrapServers, groupId);
+        consumer.subscribe(Collections.singletonList(topic));
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+
+            for (ConsumerRecord<String, String> record : records) {
+                try {
+                    Payload payload = objectMapper.readValue(record.value(), Payload.class);
+                    System.out.println("Consumed record with key " + record.key() + " and value " + payload);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
     To handle a `Student` object that contains a `String` field and a `byte[]` field, you'll need to adjust the deserialization logic accordingly. Here's how you can modify your Spring Boot application to properly handle and print these fields.
 
 ### 1. Update the `Student` Class
