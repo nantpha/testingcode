@@ -1,0 +1,147 @@
+When deciding between using partition or offset values in Kafka to manage message consumption, it's important to understand the use cases and benefits of each:
+
+1. **Partition**:
+   - **Use Case**: Partitions are used to ensure message ordering and parallelism. By consuming from specific partitions, you ensure that the order of messages within those partitions is preserved. This is crucial for applications that rely on the sequence of messages.
+   - **Best for**: Ensuring message order, load balancing, and parallel processing.
+
+2. **Offset**:
+   - **Use Case**: Offsets are used to track the position of consumption within a partition. Offsets allow you to start consuming from a specific point, which is useful for replaying messages or recovering from a failure.
+   - **Best for**: Precise control over message consumption, such as starting from a specific point or resuming after a failure.
+
+### Combining Both: Best Practices
+
+In practice, using both partition and offset can provide the most control and flexibility. Here’s how you can use both effectively in a Spring Kafka consumer:
+
+### Configuring Consumer for Specific Offsets
+
+To consume messages starting from a specific offset in a partition, you can use a `SeekToCurrentErrorHandler` or manually seek to the desired offset using a `ConsumerRebalanceListener`.
+
+#### Example: Using ConsumerRebalanceListener
+
+1. **Configure Kafka Consumer Factory and Container Factory**:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.config.ContainerProperties;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@EnableKafka
+@Configuration
+public class KafkaConsumerConfig {
+
+    @Bean
+    public ConsumerFactory<String, String> consumerFactory() {
+        Map<String, Object> config = new HashMap<>();
+
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "audio-group");
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase());
+
+        return new DefaultKafkaConsumerFactory<>(config);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = 
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        return factory;
+    }
+}
+```
+
+2. **Create a Kafka Listener with Offset Management**:
+
+```java
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.common.TopicPartition;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Service;
+
+import java.util.Base64;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Service
+public class AudioKafkaConsumer {
+
+    private final Map<TopicPartition, Long> offsets = new ConcurrentHashMap<>();
+
+    @KafkaListener(topics = "audio-topic", groupId = "audio-group", containerFactory = "kafkaListenerContainerFactory")
+    public void consume(ConsumerRecord<String, String> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+        String base64AudioString = record.value();
+        
+        // Decode Base64 string to byte array
+        byte[] audioBytes = Base64.getDecoder().decode(base64AudioString);
+
+        // Process the audio bytes as needed
+        processAudioBytes(audioBytes);
+
+        // Manually acknowledge the message
+        acknowledgment.acknowledge();
+
+        // Save offset
+        offsets.put(new TopicPartition(record.topic(), record.partition()), record.offset() + 1);
+    }
+
+    private void processAudioBytes(byte[] audioBytes) {
+        // Implement your audio processing logic here
+        System.out.println("Received audio bytes of length: " + audioBytes.length);
+        
+        // For example, save to a file or play the audio
+    }
+
+    private ConsumerRebalanceListener getRebalanceListener(Consumer<?, ?> consumer) {
+        return new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                // Save current offsets to storage (e.g., database)
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                // Seek to the last committed offset
+                for (TopicPartition partition : partitions) {
+                    Long offset = offsets.get(partition);
+                    if (offset != null) {
+                        consumer.seek(partition, offset);
+                    } else {
+                        consumer.seekToBeginning(partitions);
+                    }
+                }
+            }
+        };
+    }
+}
+```
+
+### Explanation
+
+- **ConsumerRebalanceListener**: This listener handles partition reassignments. When partitions are assigned, it seeks to the last committed offset. This ensures that the consumer starts from the correct offset after a rebalance.
+- **Manual Offset Management**: The consumer saves the current offset after processing each record. This offset is used to resume consumption from the correct position.
+- **Manual Acknowledgment**: This ensures that messages are processed exactly once by acknowledging them only after successful processing.
+
+### Conclusion
+
+- **Partition**: Use partitions to ensure message order and parallel processing.
+- **Offset**: Use offsets for precise control over message consumption, especially for replaying messages or resuming from a specific point.
+
+By combining both, you can achieve robust and reliable message consumption tailored to your application's needs.
