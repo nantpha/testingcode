@@ -1,3 +1,206 @@
+
+Let's go through a more detailed step-by-step process to ensure everything is set up correctly.
+
+### Step-by-Step Guide
+
+1. **Create a New Spring Boot Project:**
+
+   Use Spring Initializr to create a new project with the necessary dependencies.
+   - Visit [start.spring.io](https://start.spring.io/).
+   - Project: Maven
+   - Language: Java
+   - Spring Boot: Latest stable version
+   - Dependencies: Spring Web, Spring Boot DevTools
+
+2. **Add gRPC Dependencies:**
+
+   Update your `pom.xml` file to include the necessary dependencies for gRPC and Protobuf:
+
+   ```xml
+   <dependencies>
+       <!-- Spring Boot Starter -->
+       <dependency>
+           <groupId>org.springframework.boot</groupId>
+           <artifactId>spring-boot-starter</artifactId>
+       </dependency>
+
+       <!-- gRPC dependencies -->
+       <dependency>
+           <groupId>io.grpc</groupId>
+           <artifactId>grpc-netty-shaded</artifactId>
+           <version>1.48.0</version>
+       </dependency>
+       <dependency>
+           <groupId>io.grpc</groupId>
+           <artifactId>grpc-protobuf</artifactId>
+           <version>1.48.0</version>
+       </dependency>
+       <dependency>
+           <groupId>io.grpc</groupId>
+           <artifactId>grpc-stub</artifactId>
+           <version>1.48.0</version>
+       </dependency>
+
+       <!-- Protobuf dependencies -->
+       <dependency>
+           <groupId>com.google.protobuf</groupId>
+           <artifactId>protobuf-java</artifactId>
+           <version>3.21.7</version>
+       </dependency>
+
+       <!-- gRPC Spring Boot Starter -->
+       <dependency>
+           <groupId>org.lognet</groupId>
+           <artifactId>grpc-spring-boot-starter</artifactId>
+           <version>4.5.10</version>
+       </dependency>
+   </dependencies>
+
+   <build>
+       <extensions>
+           <extension>
+               <groupId>kr.motd.maven</groupId>
+               <artifactId>os-maven-plugin</artifactId>
+               <version>1.6.2</version>
+           </extension>
+       </extensions>
+       <plugins>
+           <plugin>
+               <groupId>org.xolstice.maven.plugins</groupId>
+               <artifactId>protobuf-maven-plugin</artifactId>
+               <version>0.6.1</version>
+               <configuration>
+                   <protocArtifact>com.google.protobuf:protoc:3.21.7:exe:${os.detected.classifier}</protocArtifact>
+                   <pluginId>grpc-java</pluginId>
+                   <pluginArtifact>io.grpc:protoc-gen-grpc-java:1.48.0:exe:${os.detected.classifier}</pluginArtifact>
+               </configuration>
+               <executions>
+                   <execution>
+                       <goals>
+                           <goal>compile</goal>
+                           <goal>compile-custom</goal>
+                           <goal>test-compile</goal>
+                           <goal>test-compile-custom</goal>
+                       </goals>
+                   </execution>
+               </executions>
+           </plugin>
+       </plugins>
+   </build>
+   ```
+
+3. **Define the gRPC Service using Protocol Buffers:**
+
+   Create a `.proto` file in `src/main/proto/helloworld.proto`:
+
+   ```proto
+   syntax = "proto3";
+
+   option java_multiple_files = true;
+   option java_package = "com.example.grpc";
+   option java_outer_classname = "HelloWorldProto";
+
+   service Greeter {
+     rpc SayHello (HelloRequest) returns (HelloReply);
+   }
+
+   message HelloRequest {
+     string name = 1;
+   }
+
+   message HelloReply {
+     string message = 1;
+   }
+   ```
+
+4. **Implement the gRPC Service:**
+
+   Create a class that implements the generated gRPC service. For example, `HelloWorldService.java`:
+
+   ```java
+   package com.example.grpc;
+
+   import io.grpc.stub.StreamObserver;
+   import org.lognet.springboot.grpc.GRpcService;
+
+   @GRpcService
+   public class HelloWorldService extends GreeterGrpc.GreeterImplBase {
+
+       @Override
+       public void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
+           HelloReply reply = HelloReply.newBuilder()
+               .setMessage("Hello " + request.getName())
+               .build();
+           responseObserver.onNext(reply);
+           responseObserver.onCompleted();
+       }
+   }
+   ```
+
+5. **Configure Spring Boot for gRPC:**
+
+   Ensure the `application.properties` file contains the necessary logging configuration and gRPC port configuration:
+
+   ```properties
+   grpc.server.port=9090
+   logging.level.root=INFO
+   logging.level.org.springframework=INFO
+   logging.level.com.example=DEBUG
+   logging.level.io.grpc=DEBUG
+   ```
+
+6. **Main Application Class:**
+
+   Create a main application class to run your Spring Boot application:
+
+   ```java
+   package com.example.grpc;
+
+   import org.springframework.boot.SpringApplication;
+   import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+   @SpringBootApplication
+   public class GrpcApplication {
+
+       public static void main(String[] args) {
+           SpringApplication.run(GrpcApplication.class, args);
+       }
+   }
+   ```
+
+7. **Build and Run:**
+
+   Ensure your project is built correctly. Run the following commands from your project root to clean and build:
+
+   ```sh
+   ./mvnw clean install
+   ```
+
+   Then, run your application again:
+
+   ```sh
+   ./mvnw spring-boot:run
+   ```
+
+8. **Check Logs:**
+
+   Upon successful startup, you should see logs indicating that the gRPC server has started. Look for entries similar to:
+
+   ```
+   [INFO] [main] o.l.s.g.GrpcServerRunner - Starting gRPC Server ...
+   [INFO] [main] o.l.s.g.GrpcServerRunner - gRPC Server started, listening on address: *, port: 9090
+   ```
+
+If you still do not see any gRPC-related logs, consider the following troubleshooting steps:
+
+- Ensure no other applications are running on port 9090.
+- Verify that the `@GRpcService` annotation is correctly applied to your service implementation.
+- Check for any exceptions or errors in the logs that might indicate why the gRPC server is not starting.
+- Ensure the correct versions of all dependencies are being used and that there are no conflicts.
+
+Let me know if you encounter any specific errors or issues during this process.
+
+
 <dependencies>
     <!-- Spring Boot Starter -->
     <dependency>
