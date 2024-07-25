@@ -1,3 +1,32 @@
+Here's a message you can send:
+
+---
+
+Subject: Issue with Receiving gRPC Events in Spring Boot Application
+
+Hi [Recipient's Name],
+
+I hope this message finds you well.
+
+We are currently encountering an issue with our Spring Boot application, which uses gRPC. Despite our memory and CPU usage being below 59%, we are experiencing problems with receiving gRPC events from the client in GKP (Google Kubernetes Engine). 
+
+The application does not seem to accept the requests from the client, and we have been unable to identify the root cause of this issue.
+
+Could you please assist us in diagnosing and resolving this problem? Any insights or recommendations would be greatly appreciated.
+
+Thank you for your support.
+
+Best regards,
+
+[Your Name]  
+[Your Position]  
+[Your Contact Information]
+
+---
+
+Feel free to adjust the details as needed.
+
+
 
 Let's go through a more detailed step-by-step process to ensure everything is set up correctly.
 
