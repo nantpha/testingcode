@@ -1,3 +1,119 @@
+
+If you have multiple pods consuming from the same Kafka topic and you want to ensure that messages for the same user (same user ID) are handled by the same pod, you can rely on Kafka's partitioning and consumer group mechanisms. However, if you want to explicitly differentiate between pods for the same user ID subscription and ensure that a specific pod handles a specific user's messages, you need to follow these steps:
+
+1. **Use User ID as Key**:
+    Ensure that you are using the user ID as the key when producing messages. This ensures that all messages for the same user go to the same partition.
+
+2. **Ensure Single Consumer for Each Partition**:
+    Kafka's consumer group mechanism ensures that each partition is consumed by only one consumer within the same consumer group. This means that as long as the number of consumers (pods) does not exceed the number of partitions, each partition will be handled by a single pod.
+
+3. **Configure Consumer Group**:
+    All your pods should be part of the same consumer group to allow Kafka to assign partitions to the available pods.
+
+### Example Implementation:
+
+#### Producer Code
+When producing messages, use the user ID as the key:
+
+```java
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
+import java.util.Properties;
+
+public class StickySessionProducer {
+    public static void main(String[] args) {
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        KafkaProducer<String, String> producer = new KafkaProducer<>(props);
+
+        String userId = "user123"; // Example user ID
+        String topic = "user-topic";
+        String value = "some message for user";
+
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, userId, value);
+        producer.send(record);
+
+        producer.close();
+    }
+}
+```
+
+#### Consumer Code
+Ensure that all consumer instances (pods) are part of the same consumer group and handle partition assignment appropriately:
+
+```java
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.util.Collections;
+import java.util.Properties;
+
+public class StickySessionConsumer {
+    public static void main(String[] args) {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "user-session-group"); // Same group ID for all consumers
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        consumer.subscribe(Collections.singletonList("user-topic"));
+
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(100);
+            for (ConsumerRecord<String, String> record : records) {
+                System.out.printf("Consumed record with key %s and value %s%n", record.key(), record.value());
+            }
+        }
+    }
+}
+```
+
+#### Deploy Consumers in Kubernetes
+Deploy your consumer application in Kubernetes, ensuring that all pods are part of the same consumer group:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+        - name: kafka-consumer
+          image: your-consumer-image
+          ports:
+            - containerPort: 8080
+```
+
+### Ensuring Correct Partition Assignment
+
+Kafka will automatically assign partitions to consumers in the same group, ensuring each partition is handled by one consumer at a time. If you have more consumers than partitions, some consumers will be idle. If you have more partitions than consumers, some consumers will handle multiple partitions.
+
+To ensure correct handling:
+
+- **Number of Partitions**: Ensure you have enough partitions to distribute the load evenly among your consumers.
+- **Idempotent Processing**: Ensure your message processing is idempotent to handle potential rebalancing gracefully.
+
+By following these guidelines, you can ensure that each user’s messages are handled by a specific consumer pod, achieving the desired sticky session behavior.
+
+
 To ensure that a specific consumer instance (or pod) handles messages from a particular partition, even when your consumer application is deployed in multiple clusters or pods, you can leverage Kafka's consumer group and partition assignment mechanism. Here's how you can achieve this:
 
 1. **Consumer Group**: All your consumer instances (pods) should belong to the same consumer group. Kafka will automatically assign partitions to consumers in the same group to ensure that each partition is consumed by only one consumer instance at a time.
