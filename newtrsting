@@ -1,4 +1,18 @@
-
+query studentQuery {
+  Student(filter: {
+    filterGroup: {
+      organizationName: "tt",
+      registrationDate: { gte: "2024-08-01", lte: "2024-08-31" }
+    }
+  }) {
+    id
+    firstName
+    lastName
+    organizationName
+    registrationDate
+    status
+  }
+}
 In Kafka, if a consumer receives a message that is not intended for it (e.g., the message belongs to another pod or service), you have a few options:
 
 ### 1. **Forwarding the Message to Another Topic or Partition:**
