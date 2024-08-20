@@ -1,3 +1,32 @@
+
+Scenario,Description
+Message Production,
+- Successful Message Production,Ensure that the app can produce messages to the Kafka topic successfully.
+- Message Format Validation,Check that produced messages adhere to the expected schema or format.
+- Error Handling on Production Failure,Test the app’s response to failures during message production (e.g., network issues).
+- High Throughput,Assess the app’s ability to handle high volumes of messages.
+Message Consumption,
+- Successful Message Consumption,Verify that the app can consume messages from the Kafka topic correctly.
+- Order Preservation,Ensure that messages are consumed in the order they were produced (if required).
+- Handling Duplicates,Test how the app manages duplicate messages.
+- Delayed/Out-of-Order Messages,Check how the app handles delayed or out-of-order messages.
+Error Handling and Recovery,
+- Broker/Network Failures,Simulate broker or network failures and observe app recovery behavior.
+- Retries and Dead Letter Queues (DLQ),Test retry mechanisms and the handling of messages that cannot be processed (DLQ).
+- Offset Management,Verify the app’s handling of Kafka offsets (manual vs. auto-commit).
+Performance Testing,
+- Latency Measurement,Measure the time taken for a message to be produced and consumed.
+- Load Testing,Assess the app’s performance under heavy loads.
+- Scalability Testing,Test the app’s ability to scale with increasing Kafka partitions and consumers.
+Security and Access Control,
+- Authentication/Authorization,Validate that the app properly authenticates and authorizes with Kafka brokers.
+- Data Encryption,Test encryption of data in transit and at rest within Kafka.
+Monitoring and Logging,
+- Monitoring Integration,Ensure the app integrates with Kafka monitoring tools (e.g., Prometheus, Grafana).
+- Logging of Kafka Events,Verify that Kafka-related events are logged appropriately for troubleshooting.
+
+
+
 query studentQuery {
   Student(filter: {
     filterGroup: {
