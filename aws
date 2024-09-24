@@ -1,0 +1,71 @@
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
+import java.io.File;
+import java.nio.file.Paths;
+
+public class S3DownloadTextFiles {
+
+    public static void main(String[] args) {
+        Region region = Region.US_EAST_1;  // Set your region
+        S3Client s3 = S3Client.builder()
+                .region(region)
+                .credentialsProvider(ProfileCredentialsProvider.create())
+                .build();
+
+        String bucketName = "your-bucket-name";  // Replace with your bucket name
+        String prefix = "your-prefix/";          // Replace with your prefix
+        String downloadDirectory = "local-download-path/";  // Local directory to download files
+
+        downloadTextFiles(s3, bucketName, prefix, downloadDirectory);
+        s3.close();
+    }
+
+    public static void downloadTextFiles(S3Client s3, String bucketName, String prefix, String downloadDirectory) {
+        ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .maxKeys(1000)  // S3 limits to 1000 per request
+                .build();
+
+        boolean done = false;
+        int fileCount = 0;
+        while (!done && fileCount < 2000) {
+            ListObjectsV2Response listResponse = s3.listObjectsV2(listRequest);
+            
+            for (S3Object s3Object : listResponse.contents()) {
+                String key = s3Object.key();
+                
+                // Download only .txt files
+                if (key.endsWith(".txt")) {
+                    fileCount++;
+                    if (fileCount > 2000) {
+                        break;
+                    }
+                    
+                    // Download the file
+                    downloadFile(s3, bucketName, key, downloadDirectory);
+                    System.out.println("Downloaded: " + key);
+                }
+            }
+            
+            // Check if there's more data to retrieve
+            if (listResponse.isTruncated()) {
+                listRequest = listRequest.toBuilder().continuationToken(listResponse.nextContinuationToken()).build();
+            } else {
+                done = true;
+            }
+        }
+    }
+
+    public static void downloadFile(S3Client s3, String bucketName, String key, String downloadDirectory) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        String localFilePath = Paths.get(downloadDirectory, key.substring(key.lastIndexOf('/') + 1)).toString();
+        s3.getObject(getObjectRequest, Paths.get(localFilePath));
+    }
+}
