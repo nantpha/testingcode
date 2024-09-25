@@ -1,3 +1,76 @@
+
+
+package com.lululemon.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lululemon.invoker.SFCCApiInvoker;
+import com.lululemon.mapper.SFCCPaymentCaptureMapper;
+import com.lululemon.paymentNotification.Header;
+import com.lululemon.paymentNotification.PaymentNotification;
+import com.lululemon.pojo.Payload;
+import com.lululemon.utils.crypt.EncryptDecryptUtil;
+import com.lululemon.utils.error.CustomError;
+
+import static com.lululemon.constants.ApplicationConstants.*;
+import static com.lululemon.logging.LoggerUtility.*;
+import static com.lululemon.logging.LoggerUtility.logError;
+import static com.lululemon.utils.SFCCConsumerUtility.safeGet;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.util.Objects;
+
+@Service
+@Slf4j
+public class SFCCPaymentCaptureService {
+    @Autowired
+    private SFCCApiInvoker SFCCApiInvoker;
+    @Autowired
+    private SFCCPaymentCaptureMapper SFCCPaymentCaptureMapper;
+    @Autowired
+    private EncryptDecryptUtil encryptDecryptUtil;
+
+    public void processPaymentAuthorization(PaymentNotification paymentNotification) {
+        String merchantReference = Objects.requireNonNull(safeGet(() -> paymentNotification
+                .getDetails().getMerchantRefOrderNo())).toString();
+        Header header = Objects.requireNonNullElse(paymentNotification.getHeader(), new Header());
+        logInfo(log, "Started SFCC payment processing authorization for ", merchantReference, header);
+        Payload notificationPayload = new Payload();
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            String encryptedPayload = (paymentNotification.getDetails().getInputPayload().toString());
+            logInfo(log, "Decrypting payment authorization payload for ", merchantReference, header);
+            String encryptedPrivateKey = paymentNotification.getDetails().getEncryptionKeys().getEncryptionKey().get(0)
+                    .getEncryptedPrivateKey().toString();
+            SecretKey sk = encryptDecryptUtil.convertStringToSecretKey(encryptedPrivateKey);
+            String decryptedPayload = encryptDecryptUtil.decryptData(sk, encryptedPayload, merchantReference);
+
+            logContentInNonProd(log, "Decrypted payload for the target = SFCC is: ", decryptedPayload);
+
+            notificationPayload = mapper.readValue(decryptedPayload, Payload.class);
+            if (SFCC_SYSTEM.equals(paymentNotification.getHeader().getTargetSystem().toString())) {
+                Payload transformedPayload = SFCCPaymentCaptureMapper.transform(notificationPayload);
+                logContentInNonProd(log, "Transformed payload for the SFCC is : ",
+                        new ObjectMapper().writeValueAsString(transformedPayload));
+                logInfo(log, "Sending payment authorization payload to SFCC for ", merchantReference, header);
+                SFCCApiInvoker.sendNotificationToSFCC(transformedPayload);
+            }
+            logInfo(log, "The SFCC payment authorization request has been Completed for ", merchantReference, header);
+        } catch (CustomError error) {
+            throw error;
+        } catch (Exception e) {
+            CustomError error = new CustomError(e, className(this), false, false, true);
+            logError(log, "Error in Adyen SFCC consumer service", error, ER_AC_SFCC_PROCESS_FAILED);
+            throw error;
+        }
+    }
+}
+
+
+
 Let's go through a complete example of how to write a custom load balancer (or partitioner) for Kafka, which routes messages based on a specific logic. In this case, we'll design a partitioner that routes messages with specific `customerID` values to dedicated partitions, while distributing others evenly across the remaining partitions.
 
 ### Scenario
