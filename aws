@@ -1,4 +1,32 @@
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+
+import java.util.List;
+
+public class SequencePicker {
+    private List<String> values;
+    private int currentIndex = 0;
+
+    public SequencePicker(List<String> values) {
+        this.values = values;
+    }
+
+    public String getNextValue() {
+        String value = values.get(currentIndex);
+        currentIndex = (currentIndex + 1) % values.size(); // Move to the next index, wrap around if needed
+        return value;
+    }
+
+    public static void main(String[] args) {
+        List<String> myList = List.of("A", "B", "C", "D", "E", "F");
+        SequencePicker picker = new SequencePicker(myList);
+
+        for (int i = 0; i < 10; i++) {
+            System.out.println(picker.getNextValue());
+        }
+    }
+}
+
+
+mimport software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
