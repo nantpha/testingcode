@@ -1,0 +1,243 @@
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.*;
+import java.nio.ByteBuffer;
+import java.nio.file.*;
+import java.util.concurrent.CompletableFuture;
+
+public class S3ChunkTransfer {
+    private static final int CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
+    private static final int MAX_RETRIES = 3;
+
+    public static void main(String[] args) throws Exception {
+        String sourceBucket = "source-bucket-name";
+        String sourceKey = "source/audio/file.mp3";
+        String destinationBucket = "destination-bucket-name";
+        String destinationKey = "destination/audio/file.mp3";
+
+        S3AsyncClient s3Client = S3AsyncClient.create();
+        transferFileInChunks(s3Client, sourceBucket, sourceKey, destinationBucket, destinationKey);
+    }
+
+    private static void transferFileInChunks(S3AsyncClient s3Client, String sourceBucket, String sourceKey,
+                                             String destinationBucket, String destinationKey) throws Exception {
+        // Get the total size of the file
+        HeadObjectResponse headObject = s3Client.headObject(
+            HeadObjectRequest.builder().bucket(sourceBucket).key(sourceKey).build()
+        ).join();
+        long totalSize = headObject.contentLength();
+
+        // Transfer chunks
+        for (long offset = 0; offset < totalSize; offset += CHUNK_SIZE) {
+            boolean success = false;
+            int retries = 0;
+
+            while (!success && retries < MAX_RETRIES) {
+                try {
+                    // Download the chunk
+                    ByteBuffer chunkData = downloadChunk(s3Client, sourceBucket, sourceKey, offset, CHUNK_SIZE, totalSize);
+
+                    // Upload the chunk
+                    uploadChunk(s3Client, destinationBucket, destinationKey, offset, chunkData);
+
+                    success = true;
+                } catch (Exception e) {
+                    retries++;
+                    if (retries >= MAX_RETRIES) {
+                        System.err.printf("Failed to transfer chunk at offset %d after %d retries.%n", offset, retries);
+                        throw e;
+                    }
+                    System.err.printf("Retrying chunk at offset %d (%d/%d).%n", offset, retries, MAX_RETRIES);
+                }
+            }
+        }
+        System.out.println("File transferred successfully!");
+    }
+
+    private static ByteBuffer downloadChunk(S3AsyncClient s3Client, String bucket, String key, long offset, int chunkSize, long totalSize) throws Exception {
+        long end = Math.min(offset + chunkSize - 1, totalSize - 1);
+
+        CompletableFuture<ByteBuffer> future = s3Client.getObject(
+            GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .range(String.format("bytes=%d-%d", offset, end))
+                .build(),
+            AsyncResponseTransformer.toBytes()
+        ).thenApply(response -> response.asByteBuffer());
+
+        return future.join();
+    }
+
+    private static void uploadChunk(S3AsyncClient s3Client, String bucket, String key, long offset, ByteBuffer chunkData) throws Exception {
+        CompletableFuture<Void> future = s3Client.putObject(
+            PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build(),
+            AsyncRequestBody.fromBytes(chunkData.array())
+        );
+
+        future.join();
+    }
+}
+
+
+-----------------------------------
+
+
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.*;
+import software.amazon.awssdk.core.async.*;
+import java.nio.file.*;
+import java.nio.ByteBuffer;
+import java.util.concurrent.*;
+import java.util.List;
+
+public class S3ChunkUpload {
+
+    private static final String SOURCE_BUCKET = "source-bucket";
+    private static final String DEST_BUCKET = "destination-bucket";
+    private static final String FILE_KEY = "audio-file.mp3";
+    private static final int CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks (can adjust)
+
+    private static S3AsyncClient s3AsyncClient = S3AsyncClient.create();
+    private static ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+    public static void main(String[] args) {
+        try {
+            // Step 1: Download the file in chunks
+            downloadAndUploadInChunks(FILE_KEY);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            executorService.shutdown();
+        }
+    }
+
+    public static void downloadAndUploadInChunks(String key) throws InterruptedException, ExecutionException {
+        // Step 2: Get file metadata from the source bucket
+        HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                .bucket(SOURCE_BUCKET)
+                .key(key)
+                .build();
+
+        HeadObjectResponse headResponse = s3AsyncClient.headObject(headRequest).get();
+        long fileSize = headResponse.contentLength();
+
+        // Step 3: Download file in chunks
+        for (long startByte = 0; startByte < fileSize; startByte += CHUNK_SIZE) {
+            long endByte = Math.min(startByte + CHUNK_SIZE - 1, fileSize - 1);
+            System.out.println("Downloading chunk: " + startByte + " to " + endByte);
+
+            // Download chunk asynchronously
+            downloadChunk(key, startByte, endByte).thenAcceptAsync(chunkData -> {
+                // Step 4: Upload chunk to destination bucket
+                uploadChunk(chunkData, startByte).thenAccept(response -> {
+                    System.out.println("Chunk uploaded successfully: " + startByte);
+                }).exceptionally(e -> {
+                    System.err.println("Error uploading chunk: " + startByte + " due to: " + e.getMessage());
+                    return null;
+                });
+            }).exceptionally(e -> {
+                System.err.println("Error downloading chunk: " + startByte + " due to: " + e.getMessage());
+                return null;
+            });
+        }
+    }
+
+    public static CompletableFuture<ByteBuffer> downloadChunk(String key, long startByte, long endByte) {
+        GetObjectRequest getRequest = GetObjectRequest.builder()
+                .bucket(SOURCE_BUCKET)
+                .key(key)
+                .range("bytes=" + startByte + "-" + endByte)
+                .build();
+
+        CompletableFuture<ByteBuffer> future = new CompletableFuture<>();
+        s3AsyncClient.getObject(getRequest, AsyncResponseTransformer.toBytes())
+                .whenComplete((response, exception) -> {
+                    if (exception != null) {
+                        future.completeExceptionally(exception);
+                    } else {
+                        future.complete(response.asByteBuffer());
+                    }
+                });
+        return future;
+    }
+
+    public static CompletableFuture<PutObjectResponse> uploadChunk(ByteBuffer chunkData, long startByte) {
+        String destKey = FILE_KEY + ".part" + startByte;
+
+        PutObjectRequest putRequest = PutObjectRequest.builder()
+                .bucket(DEST_BUCKET)
+                .key(destKey)
+                .build();
+
+        return s3AsyncClient.putObject(putRequest, AsyncRequestBody.fromByteBuffer(chunkData));
+    }
+}
+----
+public static CompletableFuture<PutObjectResponse> uploadChunkWithRetry(ByteBuffer chunkData, long startByte, int retries) {
+    return uploadChunk(chunkData, startByte).handle((response, exception) -> {
+        if (exception != null && retries > 0) {
+            System.out.println("Retrying chunk upload: " + startByte);
+            return uploadChunkWithRetry(chunkData, startByte, retries - 1);
+        }
+        return response;
+    }).thenCompose(response -> response);
+}
+------------------
+import software.amazon.awssdk.services.s3.*;
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.core.async.*;
+import java.nio.ByteBuffer;
+import java.util.concurrent.*;
+import java.util.stream.*;
+import java.util.*;
+
+public class S3ChunkedTransfer {
+
+    private static final String SOURCE_BUCKET = "source-bucket";
+    private static final String DEST_BUCKET = "destination-bucket";
+    private static final String SOURCE_FILE_KEY = "audio-file.mp3";
+    private static final String DEST_FILE_KEY = "audio-file.mp3";
+    private static final int CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB
+    private static final int MAX_CONCURRENT_OPERATIONS = 5;
+
+    private static final S3AsyncClient s3AsyncClient = S3AsyncClient.create();
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(MAX_CONCURRENT_OPERATIONS);
+
+    public static void main(String[] args) throws Exception {
+        transferFileInChunks();
+        executorService.shutdown();
+    }
+
+    public static void transferFileInChunks() throws Exception {
+        // Step 1: Get file metadata from the source bucket
+        long fileSize = getFileSize(SOURCE_BUCKET, SOURCE_FILE_KEY);
+
+        // Step 2: Determine the chunks
+        List<Long> chunkOffsets = LongStream.iterate(0, offset -> offset + CHUNK_SIZE)
+                .limit((fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE)
+                .boxed()
+                .collect(Collectors.toList());
+
+        // Step 3: Process each chunk (download and upload) in parallel
+        List<CompletableFuture<Void>> tasks = chunkOffsets.stream()
+                .map(offset -> CompletableFuture.runAsync(() -> {
+                    try {
+                        processChunk(offset, Math.min(offset + CHUNK_SIZE - 1, fileSize - 1));
+                    } catch (Exception e) {
+                        System.err.println("Error processing chunk at offset " + offset + ": " + e.getMessage());
+                        throw new CompletionException(e);
+                    }
+                }, executorService))
+                .collect(Collectors.toList());
+
+        // Wait for all tasks to complete
+        CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
+        System.out.println("File transfer completed.");
+    }
+
+    private static long getFileSize(String bucket, String
