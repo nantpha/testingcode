@@ -1,3 +1,152 @@
+import software.amazon.awssdk.services.s3.*;
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.core.async.*;
+import java.nio.ByteBuffer;
+import java.util.concurrent.*;
+import java.util.*;
+import java.util.stream.*;
+
+public class S3ChunkedFileTransfer {
+
+    private static final String SOURCE_BUCKET = "source-bucket";
+    private static final String DEST_BUCKET = "destination-bucket";
+    private static final String SOURCE_FILE_KEY = "large-file.mp4"; // Same key for source and destination
+    private static final int CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB
+    private static final int MAX_CONCURRENT_OPERATIONS = 5;
+
+    private static final S3AsyncClient s3AsyncClient = S3AsyncClient.create();
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(MAX_CONCURRENT_OPERATIONS);
+
+    public static void main(String[] args) throws Exception {
+        transferFileInChunks();
+        executorService.shutdown();
+    }
+
+    public static void transferFileInChunks() throws Exception {
+        // Step 1: Get the file size from the source bucket
+        long fileSize = getFileSize(SOURCE_BUCKET, SOURCE_FILE_KEY);
+
+        // Step 2: Split the file into chunks based on chunk size
+        List<Long> chunkOffsets = LongStream.iterate(0, offset -> offset + CHUNK_SIZE)
+                .limit((fileSize + CHUNK_SIZE - 1) / CHUNK_SIZE)
+                .boxed()
+                .collect(Collectors.toList());
+
+        // Step 3: Initialize the multipart upload
+        CreateMultipartUploadRequest createMultipartRequest = CreateMultipartUploadRequest.builder()
+                .bucket(DEST_BUCKET)
+                .key(SOURCE_FILE_KEY) // Keep the same file name
+                .build();
+        
+        CreateMultipartUploadResponse createMultipartResponse = s3AsyncClient.createMultipartUpload(createMultipartRequest).get();
+        String uploadId = createMultipartResponse.uploadId();
+
+        // Step 4: Process each chunk (download and upload) in parallel
+        List<CompletableFuture<Void>> tasks = chunkOffsets.stream()
+                .map(offset -> CompletableFuture.runAsync(() -> {
+                    try {
+                        processChunk(SOURCE_BUCKET, SOURCE_FILE_KEY, DEST_BUCKET, uploadId, offset, fileSize);
+                    } catch (Exception e) {
+                        System.err.println("Error processing chunk at offset " + offset + ": " + e.getMessage());
+                    }
+                }, executorService))
+                .collect(Collectors.toList());
+
+        // Wait for all tasks to complete
+        CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0])).join();
+
+        // Step 5: Complete the multipart upload
+        completeMultipartUpload(uploadId);
+
+        System.out.println("File transfer completed.");
+    }
+
+    // Generalized method to get file size
+    private static long getFileSize(String bucket, String key) throws Exception {
+        HeadObjectRequest headRequest = HeadObjectRequest.builder().bucket(bucket).key(key).build();
+        return s3AsyncClient.headObject(headRequest).get().contentLength();
+    }
+
+    // Common method to process the chunk (download and upload)
+    private static void processChunk(String sourceBucket, String sourceKey, String destBucket, String uploadId, long startByte, long fileSize) throws Exception {
+        // Adjust endByte to ensure it does not exceed file size
+        long endByte = Math.min(startByte + CHUNK_SIZE - 1, fileSize - 1);
+
+        System.out.println("Processing chunk: " + startByte + " - " + endByte);
+
+        // Step 1: Download the chunk from the source bucket
+        ByteBuffer chunkData = downloadChunk(sourceBucket, sourceKey, startByte, endByte);
+
+        // Ensure chunk size is as expected
+        long chunkSize = chunkData.remaining();
+        if (chunkSize != (endByte - startByte + 1)) {
+            System.err.println("Warning: Chunk size mismatch, expected " + (endByte - startByte + 1) + " bytes, but got " + chunkSize + " bytes.");
+        }
+
+        // Step 2: Upload the chunk to the destination bucket using the same file name
+        uploadChunk(destBucket, sourceKey, uploadId, chunkData, startByte);
+
+        System.out.println("Successfully processed chunk: " + startByte + " - " + endByte);
+    }
+
+    // Common method to download a chunk
+    private static ByteBuffer downloadChunk(String bucket, String key, long startByte, long endByte) throws Exception {
+        // Ensure that the byte range is correctly calculated
+        String byteRange = "bytes=" + startByte + "-" + endByte;
+        System.out.println("Downloading range: " + byteRange);
+
+        GetObjectRequest getRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .range(byteRange)
+                .build();
+
+        // Download the chunk and return the ByteBuffer
+        return s3AsyncClient.getObject(getRequest, AsyncResponseTransformer.toBytes()).get().asByteBuffer();
+    }
+
+    // Common method to upload a chunk as part of a multipart upload
+    private static void uploadChunk(String bucket, String key, String uploadId, ByteBuffer chunkData, long startByte) throws Exception {
+        // Ensure that content length matches the chunk size
+        long chunkSize = chunkData.remaining();
+
+        // Step 1: Create part upload request
+        UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .uploadId(uploadId)
+                .partNumber((int) (startByte / CHUNK_SIZE) + 1) // Part number starts from 1
+                .contentLength(chunkSize)
+                .build();
+
+        // Step 2: Upload the part
+        UploadPartResponse uploadPartResponse = s3AsyncClient.uploadPart(uploadPartRequest, AsyncRequestBody.fromByteBuffer(chunkData)).get();
+
+        // Step 3: Track the uploaded part
+        System.out.println("Uploaded chunk part: " + uploadPartResponse.eTag());
+    }
+
+    // Complete the multipart upload
+    private static void completeMultipartUpload(String uploadId) throws Exception {
+        // Step 1: List uploaded parts
+        List<CompletedPart> completedParts = new ArrayList<>();
+        // You would collect the parts here (in the case of parallel execution, track the eTag and part number)
+
+        // Step 2: Complete multipart upload
+        CompleteMultipartUploadRequest completeMultipartRequest = CompleteMultipartUploadRequest.builder()
+                .bucket(DEST_BUCKET)
+                .key(SOURCE_FILE_KEY)
+                .uploadId(uploadId)
+                .multipartUpload(CompletedMultipartUpload.builder().parts(completedParts).build())
+                .build();
+
+        s3AsyncClient.completeMultipartUpload(completeMultipartRequest).get();
+        System.out.println("Multipart upload completed successfully.");
+    }
+}
+
+-------------------------------------------------------
+
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
