@@ -1,3 +1,85 @@
+
+
+public boolean multipartDownloadAndUpload(String sourceBucket, String sourceKey, String destBucket, String destKey) {
+    // Step 1: Initiate the multipart upload for the destination bucket
+    CreateMultipartUploadResponse createMultipartUploadResponse = s3Client.createMultipartUpload(b -> b
+        .bucket(destBucket)
+        .key(destKey));
+    String uploadId = createMultipartUploadResponse.uploadId();
+
+    List<CompletedPart> completedParts = new ArrayList<>();
+    int partNumber = 1;
+
+    try {
+        // Step 2: Get the size of the source file
+        HeadObjectResponse headObjectResponse = s3Client.headObject(b -> b
+            .bucket(sourceBucket)
+            .key(sourceKey));
+        long fileSize = headObjectResponse.contentLength();
+
+        // Step 3: Download and upload in chunks
+        long position = 0;
+        while (position < fileSize) {
+            long endByte = Math.min(position + CHUNK_SIZE - 1, fileSize - 1); // Calculate byte range
+
+            // Download chunk from the source bucket
+            String range = "bytes=" + position + "-" + endByte;
+            logger.info("Downloading range: {}", range);
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(sourceBucket)
+                .key(sourceKey)
+                .range(range)
+                .build();
+
+            ByteBuffer chunkBuffer = s3Client.getObject(getObjectRequest, ResponseTransformer.toBytes()).asByteBuffer();
+
+            // Upload the chunk to the destination bucket
+            UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                .bucket(destBucket)
+                .key(destKey)
+                .uploadId(uploadId)
+                .partNumber(partNumber)
+                .contentLength((long) chunkBuffer.remaining())
+                .build();
+
+            UploadPartResponse uploadPartResponse = s3Client.uploadPart(uploadPartRequest, RequestBody.fromByteBuffer(chunkBuffer));
+
+            // Add the completed part
+            CompletedPart part = CompletedPart.builder()
+                .partNumber(partNumber)
+                .eTag(uploadPartResponse.eTag())
+                .build();
+            completedParts.add(part);
+
+            // Move to the next chunk
+            position += CHUNK_SIZE;
+            partNumber++;
+        }
+
+        // Step 4: Complete the multipart upload
+        s3Client.completeMultipartUpload(b -> b
+            .bucket(destBucket)
+            .key(destKey)
+            .uploadId(uploadId)
+            .multipartUpload(CompletedMultipartUpload.builder().parts(completedParts).build()));
+
+        logger.info("File successfully transferred from {}:{} to {}:{}", sourceBucket, sourceKey, destBucket, destKey);
+        return true;
+    } catch (Exception e) {
+        // Abort the multipart upload if any error occurs
+        s3Client.abortMultipartUpload(b -> b
+            .bucket(destBucket)
+            .key(destKey)
+            .uploadId(uploadId));
+        logger.error("Failed to transfer file from {}:{} to {}:{}. Error: {}", sourceBucket, sourceKey, destBucket, destKey, e.getMessage(), e);
+        return false;
+    }
+}
+
+
+---/-------------------------------111-111111111111111111111111111111111111111111111
+
+
 import software.amazon.awssdk.services.s3.*;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.core.async.*;
