@@ -1,4 +1,35 @@
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.services.s3.S3Client;
 
+@Configuration
+public class S3ClientConfig {
+
+    @Bean
+    public S3Client s3Client() {
+        AwsCredentialsProvider credentialsProvider = new AwsCredentialsProvider() {
+            @Override
+            public AwsCredentials resolveCredentials() {
+                // Fetch a new token dynamically
+                String token = fetchNewToken();
+                return AwsSessionCredentials.create("accessKey", "secretKey", token);
+            }
+        };
+
+        return S3Client.builder()
+                .credentialsProvider(credentialsProvider)
+                .build();
+    }
+
+    private String fetchNewToken() {
+        // Implement the logic to fetch a new token from your token provider or authentication service
+        // Example: Call your identity provider or any external API
+        return "newTokenHere";
+    }
+}
 
 public boolean multipartDownloadAndUpload(String sourceBucket, String sourceKey, String destBucket, String destKey) {
     // Step 1: Initiate the multipart upload for the destination bucket
