@@ -1,3 +1,80 @@
+
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3ObjectSummary;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.Random;
+
+public class S3FileCounterAsyncWithRandomSampling {
+
+    private static final int SAMPLE_SIZE = 10000; // Adjust based on your needs and accuracy requirements
+
+    public static void main(String[] args) {
+        // Replace with your AWS credentials and region
+        String accessKeyId = "YOUR_ACCESS_KEY_ID";
+        String secretAccessKey = "YOUR_SECRET_ACCESS_KEY";
+        String region = "YOUR_REGION";
+        String bucketName = "your-bucket-name";
+        String prefix = "your-prefix"; // Optional, can be null or empty
+
+        S3AsyncClient s3Client = S3AsyncClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+                .build();
+
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .build();
+
+        CompletableFuture<Long> sampleCountFuture = sampleObjectsAsync(s3Client, request, SAMPLE_SIZE);
+
+        sampleCountFuture.thenAccept(sampleCount -> {
+            // Calculate estimated total count (highly approximate)
+            long estimatedTotalCount = (long) ((double) sampleCount / SAMPLE_SIZE * 1000000000000L); 
+            System.out.println("Estimated total files: " + estimatedTotalCount); 
+        }).join();
+
+        s3Client.close();
+    }
+
+    private static CompletableFuture<Long> sampleObjectsAsync(S3AsyncClient s3Client, ListObjectsV2Request request, int sampleSize) {
+        final AtomicLong sampleCount = new AtomicLong(0);
+        Random random = new Random();
+
+        return s3Client.listObjectsV2(request)
+                .thenApply(response -> {
+                    for (S3ObjectSummary summary : response.contents()) {
+                        if (random.nextDouble() < (double) sampleSize / 1000000000000L) { 
+                            sampleCount.incrementAndGet(); 
+                        }
+                    }
+
+                    String nextContinuationToken = response.nextContinuationToken();
+                    if (nextContinuationToken != null) {
+                        request.continuationToken(nextContinuationToken);
+                        return sampleObjectsAsync(s3Client, request, sampleSize);
+                    } else {
+                        return sampleCount.get();
+                    }
+                })
+                .exceptionally(e -> {
+                    System.err.println("Error sampling objects: " + e.getMessage());
+                    return 0L; // Or handle exception appropriately
+                });
+    }
+}
+
+
+
+
 Yes, you can implement a circuit breaker using Resilience4j without using annotations. Instead, you can configure and use the circuit breaker programmatically. Here’s how you can achieve that with Spring WebClient and Resilience4j, and return a `Flux` as the response.
 
 ### 1. Add Dependencies
