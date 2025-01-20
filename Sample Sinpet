@@ -1,4 +1,80 @@
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3ObjectSummary;
+
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+
+@RestController
+public class S3FileCounterRestController {
+
+    @Autowired
+    private S3AsyncClient s3Client;
+
+    private static final int SAMPLE_SIZE = 10000; // Adjust based on your needs and accuracy requirements
+
+    @GetMapping("/count-files")
+    public ResponseEntity<Long> countFiles(
+            @RequestParam(name = "bucketName", required = false) String bucketName,
+            @RequestParam(name = "prefix", required = false) String prefix) {
+
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .build();
+
+        CompletableFuture<Long> sampleCountFuture = sampleObjectsAsync(s3Client, request, SAMPLE_SIZE);
+
+        return sampleCountFuture.thenApply(sampleCount -> {
+            // Calculate estimated total count (highly approximate)
+            long estimatedTotalCount = (long) ((double) sampleCount / SAMPLE_SIZE * 1000000000000L);
+            return ResponseEntity.ok(estimatedTotalCount);
+        }).exceptionally(ex -> {
+            // Handle exceptions (e.g., log, return error response)
+            return ResponseEntity.internalServerError().body(0L);
+        }).join();
+    }
+
+    private CompletableFuture<Long> sampleObjectsAsync(S3AsyncClient s3Client, ListObjectsV2Request request, int sampleSize) {
+        final AtomicLong sampleCount = new AtomicLong(0);
+        Random random = new Random();
+
+        do {
+            CompletableFuture<ListObjectsV2Response> responseFuture = s3Client.listObjectsV2(request);
+            responseFuture.thenAccept(response -> {
+                for (S3ObjectSummary summary : response.contents()) {
+                    if (random.nextDouble() < (double) sampleSize / 1000000000000L) { 
+                        sampleCount.incrementAndGet(); 
+                    }
+                }
+
+                request.continuationToken(response.nextContinuationToken()); 
+            }).join(); // Wait for the current page to be processed
+
+        } while (request.continuationToken() != null); // Continue if there are more pages
+
+        return CompletableFuture.completedFuture(sampleCount.get()); 
+    }
+
+    // Add AWS credentials configuration using @Value annotations or Environment variables
+}
+
+
+
+
+
+
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
