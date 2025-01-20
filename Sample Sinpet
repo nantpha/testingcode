@@ -1,3 +1,93 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class S3FileCounterRestControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Mock
+    private S3AsyncClient s3ClientMock;
+
+    @Test
+    public void testCountFiles_Success() throws Exception {
+        // Mock S3AsyncClient to return sample data
+        List<S3ObjectSummary> objectSummaries = new ArrayList<>();
+        objectSummaries.add(new S3ObjectSummary());
+        objectSummaries.add(new S3ObjectSummary());
+        ListObjectsV2Response mockResponse = ListObjectsV2Response.builder()
+                .contents(objectSummaries)
+                .nextContinuationToken("next-token")
+                .build();
+
+        CompletableFuture<ListObjectsV2Response> mockFuture1 = CompletableFuture.completedFuture(mockResponse);
+        CompletableFuture<ListObjectsV2Response> mockFuture2 = CompletableFuture.completedFuture(ListObjectsV2Response.builder().build()); // Empty response for second page
+
+        Mockito.when(s3ClientMock.listObjectsV2(ArgumentMatchers.any(ListObjectsV2Request.class)))
+                .thenReturn(mockFuture1)
+                .thenReturn(mockFuture2);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/count-files")
+                        .param("bucketName", "your-bucket-name")
+                        .param("prefix", "your-prefix"))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(2L))); // Expected sample count: 2
+    }
+
+    @Test
+    public void testCountFiles_EmptyBucket() throws Exception {
+        // Mock S3AsyncClient to return an empty list
+        ListObjectsV2Response mockResponse = ListObjectsV2Response.builder()
+                .contents(new ArrayList<>())
+                .build();
+
+        CompletableFuture<ListObjectsV2Response> mockFuture = CompletableFuture.completedFuture(mockResponse);
+
+        Mockito.when(s3ClientMock.listObjectsV2(ArgumentMatchers.any(ListObjectsV2Request.class)))
+                .thenReturn(mockFuture);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/count-files")
+                        .param("bucketName", "your-bucket-name")
+                        .param("prefix", "your-prefix"))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(0L))); // Expected sample count: 0
+    }
+
+    @Test
+    public void testCountFiles_InternalServerError() throws Exception {
+        // Mock S3AsyncClient to throw an exception
+        Mockito.when(s3ClientMock.listObjectsV2(ArgumentMatchers.any(ListObjectsV2Request.class)))
+                .thenThrow(new RuntimeException("Simulated error"));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/count-files")
+                        .param("bucketName", "your-bucket-name")
+                        .param("prefix", "your-prefix"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    // Add more test cases for other scenarios (e.g., invalid parameters, network errors)
+}
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
