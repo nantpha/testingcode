@@ -1,3 +1,109 @@
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+
+import java.io.*;
+import java.nio.channels.Channels;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+@RestController
+public class S3FileDownloadController {
+
+    @Autowired
+    private S3AsyncClient s3AsyncClient;
+
+    @GetMapping("/download")
+    public ResponseEntity<?> downloadFiles(
+            @RequestParam String bucket,
+            @RequestParam String prefix,
+            @RequestParam(required = false, defaultValue = "1") int count) {
+
+        try {
+            // Generate the list of keys based on the count
+            List<String> keys = IntStream.range(0, count)
+                    .mapToObj(i -> prefix + i) // Assuming files are sequentially named (e.g., prefix0, prefix1)
+                    .collect(Collectors.toList());
+
+            // For multiple files, zip them into one archive
+            if (count > 1) {
+                Path zipPath = Files.createTempFile("files", ".zip");
+
+                try (FileOutputStream fos = new FileOutputStream(zipPath.toFile());
+                     BufferedOutputStream bos = new BufferedOutputStream(fos);
+                     ZipOutputStream zos = new ZipOutputStream(bos)) {
+
+                    for (String key : keys) {
+                        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                                .bucket(bucket)
+                                .key(key)
+                                .build();
+
+                        InputStream inputStream = s3AsyncClient.getObject(
+                                getObjectRequest,
+                                AsyncResponseTransformer.toInputStream()
+                        ).join();
+
+                        // Add each file to the zip archive
+                        zos.putNextEntry(new ZipEntry(key.substring(key.lastIndexOf('/') + 1)));
+                        inputStream.transferTo(zos);
+                        zos.closeEntry();
+                        inputStream.close();
+                    }
+                }
+
+                // Serve the ZIP file
+                InputStreamResource resource = new InputStreamResource(Files.newInputStream(zipPath));
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"files.zip\"")
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .body(resource);
+            }
+
+            // For a single file, download it directly
+            String key = keys.get(0);
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+
+            InputStream inputStream = s3AsyncClient.getObject(
+                    getObjectRequest,
+                    AsyncResponseTransformer.toInputStream()
+            ).join();
+
+            InputStreamResource resource = new InputStreamResource(inputStream);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + key.substring(key.lastIndexOf('/') + 1) + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Error downloading files: " + e.getMessage());
+        }
+    }
+}
+
+
+
+......
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
