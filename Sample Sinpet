@@ -1,4 +1,90 @@
 
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.concurrent.CompletableFuture;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(S3FileDownloadController.class)
+public class S3FileDownloadControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private S3AsyncClient s3AsyncClient;
+
+    @Test
+    public void testDownloadSingleFile() throws Exception {
+        // Mock S3AsyncClient response for a single file
+        InputStream mockStream = new ByteArrayInputStream("Test file content".getBytes());
+        CompletableFuture<InputStream> mockFuture = CompletableFuture.completedFuture(mockStream);
+
+        Mockito.when(s3AsyncClient.getObject(any(GetObjectRequest.class), any(AsyncResponseTransformer.class)))
+                .thenReturn(mockFuture);
+
+        // Perform GET request to download a single file
+        mockMvc.perform(get("/download")
+                        .param("bucket", "my-test-bucket")
+                        .param("prefix", "test-file-prefix"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"test-file-prefix\""))
+                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
+                .andExpect(content().string("Test file content"));
+    }
+
+    @Test
+    public void testDownloadMultipleFiles() throws Exception {
+        // Mock S3AsyncClient response for multiple files
+        InputStream mockStream1 = new ByteArrayInputStream("File 1 content".getBytes());
+        InputStream mockStream2 = new ByteArrayInputStream("File 2 content".getBytes());
+
+        CompletableFuture<InputStream> mockFuture1 = CompletableFuture.completedFuture(mockStream1);
+        CompletableFuture<InputStream> mockFuture2 = CompletableFuture.completedFuture(mockStream2);
+
+        Mockito.when(s3AsyncClient.getObject(any(GetObjectRequest.class), any(AsyncResponseTransformer.class)))
+                .thenReturn(mockFuture1)
+                .thenReturn(mockFuture2);
+
+        // Perform GET request to download multiple files
+        mockMvc.perform(get("/download")
+                        .param("bucket", "my-test-bucket")
+                        .param("prefix", "test-file-prefix")
+                        .param("count", "2"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"files.zip\""))
+                .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM));
+    }
+
+    @Test
+    public void testDownloadErrorHandling() throws Exception {
+        // Mock S3AsyncClient to throw an exception
+        Mockito.when(s3AsyncClient.getObject(any(GetObjectRequest.class), any(AsyncResponseTransformer.class)))
+                .thenThrow(new RuntimeException("S3 error"));
+
+        // Perform GET request to trigger an error
+        mockMvc.perform(get("/download")
+                        .param("bucket", "my-test-bucket")
+                        .param("prefix", "test-file-prefix"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string("Error downloading files: S3 error"));
+    }
+}
+
+.....
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
