@@ -1,4 +1,145 @@
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.InputStreamResource;
+import software.amazon.awssdk.services.s3.model.*;
 
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@RestController
+@RequestMapping("/api/s3")
+public class S3FileController {
+
+    @Autowired
+    private S3AsyncClient s3AsyncClient;
+
+    @GetMapping("/get-files")
+    public CompletableFuture<ResponseEntity<InputStreamResource>> getFiles(
+            @RequestParam String bucketName,
+            @RequestParam String prefix,
+            @RequestParam int index,
+            @RequestParam int count) {
+
+        // Step 1: Fetch the files from S3 asynchronously.
+        return listFilesAsync(bucketName, prefix)
+                .thenCompose(files -> {
+                    // Step 2: Filter JSON and XML files
+                    List<S3Object> jsonFiles = new ArrayList<>();
+                    List<S3Object> xmlFiles = new ArrayList<>();
+
+                    for (S3Object file : files) {
+                        String fileName = file.key();
+                        if (fileName.endsWith(".json")) {
+                            jsonFiles.add(file);
+                        } else if (fileName.endsWith(".xml")) {
+                            xmlFiles.add(file);
+                        }
+                    }
+
+                    // Step 3: Ensure we select the correct files based on index and count
+                    int filesToFetch = Math.min(count, Math.min(jsonFiles.size(), xmlFiles.size()));
+                    List<S3Object> selectedJsonFiles = jsonFiles.subList(index, Math.min(index + filesToFetch, jsonFiles.size()));
+                    List<S3Object> selectedXmlFiles = xmlFiles.subList(index, Math.min(index + filesToFetch, xmlFiles.size()));
+
+                    // Step 4: Zip the selected files asynchronously
+                    return createZipAsync(selectedJsonFiles, selectedXmlFiles, bucketName)
+                            .thenApply(byteArrayOutputStream -> {
+                                ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+                                InputStreamResource resource = new InputStreamResource(byteArrayInputStream);
+
+                                return ResponseEntity.ok()
+                                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"files.zip\"")
+                                        .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                                        .contentLength(byteArrayOutputStream.size())
+                                        .body(resource);
+                            });
+                });
+    }
+
+    private CompletableFuture<List<S3Object>> listFilesAsync(String bucketName, String prefix) {
+        List<S3Object> files = new ArrayList<>();
+        String nextToken = null;
+
+        // Asynchronous pagination to list all files
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            do {
+                ListObjectsV2Request.Builder listObjectsRequest = ListObjectsV2Request.builder()
+                        .bucket(bucketName)
+                        .prefix(prefix);
+                if (nextToken != null) {
+                    listObjectsRequest.continuationToken(nextToken);
+                }
+
+                ListObjectsV2Response response = s3AsyncClient.listObjectsV2(listObjectsRequest.build()).join();
+
+                response.contents().forEach(files::add);
+                nextToken = response.nextContinuationToken();
+            } while (nextToken != null);
+        });
+
+        return future.thenApply(v -> files);
+    }
+
+    private CompletableFuture<ByteArrayOutputStream> createZipAsync(List<S3Object> jsonFiles, List<S3Object> xmlFiles, String bucketName) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        // Asynchronous file zipping
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(byteArrayOutputStream)) {
+            for (int i = 0; i < jsonFiles.size(); i++) {
+                final int index = i;
+                futures.add(CompletableFuture.runAsync(() -> {
+                    try {
+                        // Add JSON file to the ZIP
+                        addToZipAsync(zipOutputStream, bucketName, jsonFiles.get(index)).join();
+
+                        // Add corresponding XML file to the ZIP
+                        addToZipAsync(zipOutputStream, bucketName, xmlFiles.get(index)).join();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }));
+            }
+
+            // Combine all futures into one to ensure all zipping is done before returning
+            CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+            return allOf.thenApply(v -> byteArrayOutputStream);
+        }
+    }
+
+    private CompletableFuture<Void> addToZipAsync(ZipOutputStream zipOutputStream, String bucketName, S3Object s3Object) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                // Get the object from S3 asynchronously
+                GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(s3Object.key())
+                        .build();
+                InputStream inputStream = s3AsyncClient.getObject(getObjectRequest).join();
+
+                // Add to the ZIP file asynchronously
+                zipOutputStream.putNextEntry(new ZipEntry(s3Object.key()));
+
+                byte[] buffer = new byte[4096];  // Adjust buffer size for performance
+                int length;
+                while ((length = inputStream.read(buffer)) > 0) {
+                    zipOutputStream.write(buffer, 0, length);
+                }
+                zipOutputStream.closeEntry();
+                inputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+}
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
