@@ -1,4 +1,111 @@
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
+import com.amazonaws.auth.AWSBasicAWSCredentials;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@RestController
+@RequestMapping("/s3")
+public class S3Controller {
+
+    private final AmazonS3 s3Client;
+
+    public S3Controller(
+            @Value("${aws.access-key}") String accessKey,
+            @Value("${aws.secret-key}") String secretKey,
+            @Value("${aws.region}") String region) {
+        AWSBasicAWSCredentials awsCreds = new AWSBasicAWSCredentials(accessKey, secretKey);
+        this.s3Client = AmazonS3ClientBuilder.standard()
+                .withRegion(Regions.fromName(region))
+                .withCredentials(new AWSBasicAWSCredentialsProvider(awsCreds))
+                .build();
+    }
+
+    @GetMapping("/files/zip")
+    public ResponseEntity<byte[]> getFilesFromS3AsZip(
+            @RequestParam String bucketName,
+            @RequestParam String prefix,
+            @RequestParam int index,
+            @RequestParam int count) {
+        try {
+            ListObjectsV2Request req = new ListObjectsV2Request()
+                    .withBucketName(bucketName)
+                    .withPrefix(prefix);
+
+            ListObjectsV2Result result;
+            List<S3ObjectSummary> objects = new ArrayList<>();
+
+            do {
+                result = s3Client.listObjectsV2(req);
+                objects.addAll(result.getObjectSummaries());
+                req.setContinuationToken(result.getNextContinuationToken());
+            } while (result.isTruncated());
+
+            // Filter objects based on name (excluding extensions)
+            Map<String, List<S3ObjectSummary>> objectsByName = objects.stream()
+                    .collect(Collectors.groupingBy(obj -> obj.getKey().substring(0, obj.getKey().lastIndexOf("."))));
+
+            // Get a list of unique names
+            List<String> uniqueNames = new ArrayList<>(objectsByName.keySet());
+
+            // Calculate start and end indices for the desired range
+            int startIndex = Math.max(0, index);
+            int endIndex = Math.min(startIndex + count - 1, uniqueNames.size() - 1);
+
+            // Get the desired range of names
+            List<String> selectedNames = uniqueNames.subList(startIndex, endIndex + 1);
+
+            // Get the corresponding JSON and XML files for each selected name
+            List<String> selectedObjectKeys = selectedNames.stream()
+                    .flatMap(name -> objectsByName.get(name).stream()
+                            .map(S3ObjectSummary::getKey))
+                    .collect(Collectors.toList());
+
+            // Create a ByteArrayOutputStream to store the zip content
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+                for (String key : selectedObjectKeys) {
+                    S3Object object = s3Client.getObject(bucketName, key);
+                    zos.putNextEntry(new ZipEntry(key));
+                    object.getObjectContent().transferTo(zos);
+                    zos.closeEntry();
+                }
+            }
+
+            // Set the appropriate headers for the zip response
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType("application/zip");
+            headers.setContentDisposition("attachment; filename=\"files.zip\"");
+
+            return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
+
+        } catch (AmazonServiceException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        } catch (SdkClientException | IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+}
+
+
+
+
+…...........…...…..
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
