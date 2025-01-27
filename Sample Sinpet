@@ -1,3 +1,128 @@
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.InputStreamResource;
+import software.amazon.awssdk.services.s3.model.*;
+
+import java.io.*;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@RestController
+@RequestMapping("/api/s3")
+public class S3FileController {
+
+    @Autowired
+    private S3Client s3Client;
+
+    @GetMapping("/get-files")
+    public ResponseEntity<InputStreamResource> getFiles(
+            @RequestParam String bucketName,
+            @RequestParam String prefix,
+            @RequestParam int index,
+            @RequestParam int count) throws IOException {
+
+        // Fetch S3 files with the given prefix
+        List<S3Object> files = listFiles(bucketName, prefix);
+
+        // Filter JSON and XML files based on index and count
+        List<S3Object> jsonFiles = new ArrayList<>();
+        List<S3Object> xmlFiles = new ArrayList<>();
+
+        for (S3Object file : files) {
+            String fileName = file.key();
+            if (fileName.endsWith(".json")) {
+                jsonFiles.add(file);
+            } else if (fileName.endsWith(".xml")) {
+                xmlFiles.add(file);
+            }
+        }
+
+        // Make sure both JSON and XML lists have matching lengths
+        int filesToFetch = Math.min(count, Math.min(jsonFiles.size(), xmlFiles.size()));
+
+        // Adjust the index range based on the requested index and count
+        List<S3Object> selectedJsonFiles = jsonFiles.subList(index, Math.min(index + filesToFetch, jsonFiles.size()));
+        List<S3Object> selectedXmlFiles = xmlFiles.subList(index, Math.min(index + filesToFetch, xmlFiles.size()));
+
+        // Ensure that you select exactly 'count' files (even if the index is too large)
+        while (selectedJsonFiles.size() < filesToFetch && selectedJsonFiles.size() < jsonFiles.size()) {
+            selectedJsonFiles.add(jsonFiles.get(selectedJsonFiles.size()));
+        }
+        while (selectedXmlFiles.size() < filesToFetch && selectedXmlFiles.size() < xmlFiles.size()) {
+            selectedXmlFiles.add(xmlFiles.get(selectedXmlFiles.size()));
+        }
+
+        // Create a Zip output stream
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(byteArrayOutputStream)) {
+            for (int i = 0; i < filesToFetch; i++) {
+                addToZip(zipOutputStream, bucketName, selectedJsonFiles.get(i));
+                addToZip(zipOutputStream, bucketName, selectedXmlFiles.get(i));
+            }
+        }
+
+        // Prepare the ZIP file for download
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+        InputStreamResource resource = new InputStreamResource(byteArrayInputStream);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"files.zip\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(byteArrayOutputStream.size())
+                .body(resource);
+    }
+
+    private List<S3Object> listFiles(String bucketName, String prefix) {
+        List<S3Object> files = new ArrayList<>();
+        String nextToken = null;
+        
+        // Loop through paginated results from S3
+        do {
+            ListObjectsV2Request.Builder listObjectsRequest = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .prefix(prefix);
+            if (nextToken != null) {
+                listObjectsRequest.continuationToken(nextToken);
+            }
+
+            ListObjectsV2Response response = s3Client.listObjectsV2(listObjectsRequest.build());
+
+            response.contents().forEach(files::add);
+            nextToken = response.nextContinuationToken();
+
+        } while (nextToken != null);
+
+        return files;
+    }
+
+    private void addToZip(ZipOutputStream zipOutputStream, String bucketName, S3Object s3Object) throws IOException {
+        // Get the object from S3
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(s3Object.key())
+                .build();
+        InputStream inputStream = s3Client.getObject(getObjectRequest);
+
+        // Add to the ZIP file
+        zipOutputStream.putNextEntry(new ZipEntry(s3Object.key()));
+        byte[] buffer = new byte[1024];
+        int length;
+        while ((length = inputStream.read(buffer)) > 0) {
+            zipOutputStream.write(buffer, 0, length);
+        }
+        zipOutputStream.closeEntry();
+    }
+}
+....
+
+
+
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSBasicAWSCredentials;
