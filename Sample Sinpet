@@ -1,3 +1,47 @@
+
+
+
+
+private CompletableFuture<List<S3Object>> listFilesAsync(String bucketName, String prefix) {
+    List<S3Object> files = new ArrayList<>();
+    return listFilesPageAsync(bucketName, prefix, null, files);
+}
+
+private CompletableFuture<List<S3Object>> listFilesPageAsync(
+        String bucketName, String prefix, String nextToken, List<S3Object> files) {
+
+    // Build the list objects request
+    ListObjectsV2Request.Builder listObjectsRequest = ListObjectsV2Request.builder()
+            .bucket(bucketName)
+            .prefix(prefix);
+    
+    if (nextToken != null) {
+        listObjectsRequest.continuationToken(nextToken);
+    }
+
+    // Asynchronously get the list of objects from S3
+    return s3AsyncClient.listObjectsV2(listObjectsRequest.build())
+            .thenCompose(response -> {
+                // Add current batch of files to the list
+                files.addAll(response.contents());
+
+                // If there are more files, continue fetching them using recursion
+                if (response.nextContinuationToken() != null) {
+                    return listFilesPageAsync(bucketName, prefix, response.nextContinuationToken(), files);
+                } else {
+                    // No more pages, return the collected files
+                    return CompletableFuture.completedFuture(files);
+                }
+            });
+}
+
+
+
+
+
+
+
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
