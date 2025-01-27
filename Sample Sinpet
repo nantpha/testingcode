@@ -1,4 +1,24 @@
+private CompletableFuture<Void> addToZipAsync(ZipOutputStream zipOutputStream, String bucketName, S3Object s3Object) {
+    return s3AsyncClient.getObject(GetObjectRequest.builder()
+            .bucket(bucketName)
+            .key(s3Object.key())
+            .build())
+            .thenAccept(response -> {
+                try (InputStream inputStream = response.body()) {
+                    // Add to the ZIP file asynchronously
+                    zipOutputStream.putNextEntry(new ZipEntry(s3Object.key()));
 
+                    byte[] buffer = new byte[4096];  // Adjust buffer size for performance
+                    int length;
+                    while ((length = inputStream.read(buffer)) > 0) {
+                        zipOutputStream.write(buffer, 0, length);
+                    }
+                    zipOutputStream.closeEntry();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+}
 private CompletableFuture<Void> addToZipAsync(ZipOutputStream zipOutputStream, String bucketName, S3Object s3Object) {
     return s3AsyncClient.getObject(GetObjectRequest.builder()
             .bucket(bucketName)
