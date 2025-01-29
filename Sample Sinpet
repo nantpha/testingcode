@@ -1,3 +1,119 @@
+
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public class S3FileDownloader {
+
+    private final S3AsyncClient s3AsyncClient;
+    private final String bucketName;
+
+    public S3FileDownloader(S3AsyncClient s3AsyncClient, String bucketName) {
+        this.s3AsyncClient = s3AsyncClient;
+        this.bucketName = bucketName;
+    }
+
+    public CompletableFuture<ByteArrayOutputStream> downloadFiles(int index, int count) {
+        return listAllObjects()
+                .thenApply(objects -> filterObjects(objects, index, count))
+                .thenCompose(this::downloadObjects)
+                .thenApply(this::createZip);
+    }
+
+    private CompletableFuture<List<S3Object>> listAllObjects() {
+        List<S3Object> allObjects = new ArrayList<>();
+        CompletableFuture<ListObjectsV2Response> future = listObjects(null);
+        return future.thenCompose(response -> {
+            allObjects.addAll(response.contents());
+            if (response.isTruncated()) {
+                return listAllObjects(response.nextContinuationToken(), allObjects);
+            } else {
+                return CompletableFuture.completedFuture(allObjects);
+            }
+        });
+    }
+
+    private CompletableFuture<ListObjectsV2Response> listObjects(String continuationToken) {
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .continuationToken(continuationToken)
+                .build();
+        return s3AsyncClient.listObjectsV2(request).join();
+    }
+
+    private CompletableFuture<List<S3Object>> listAllObjects(String continuationToken, List<S3Object> allObjects) {
+        return listObjects(continuationToken).thenCompose(response -> {
+            allObjects.addAll(response.contents());
+            if (response.isTruncated()) {
+                return listAllObjects(response.nextContinuationToken(), allObjects);
+            } else {
+                return CompletableFuture.completedFuture(allObjects);
+            }
+        });
+    }
+
+    private List<S3Object> filterObjects(List<S3Object> objects, int index, int count) {
+        int endIndex = Math.min(index + count, objects.size());
+        return objects.subList(index, endIndex);
+    }
+
+    private CompletableFuture<List<byte[]>> downloadObjects(List<S3Object> objects) {
+        List<CompletableFuture<byte[]>> futures = new ArrayList<>();
+        for (S3Object object : objects) {
+            String key = object.key();
+            futures.add(downloadObject(key + ".json"));
+            futures.add(downloadObject(key + ".xml"));
+        }
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream()
+                        .map(CompletableFuture::join)
+                        .toList());
+    }
+
+    private CompletableFuture<byte[]> downloadObject(String key) {
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+        return s3AsyncClient.getObject(request, AsyncResponseTransformer.toBytes())
+                .thenApply(response -> response.asByteArray());
+    }
+
+    private ByteArrayOutputStream createZip(List<byte[]> files) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+            for (int i = 0; i < files.size(); i++) {
+                ZipEntry entry = new ZipEntry("file" + i + (i % 2 == 0 ? ".json" : ".xml"));
+                zos.putNextEntry(entry);
+                zos.write(files.get(i));
+                zos.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create zip file", e);
+        }
+        return baos;
+    }
+}
+
+
+
+
+
+
+
+
+
 private CompletableFuture<Void> addToZipAsync(ZipOutputStream zipOutputStream, String bucketName, S3Object s3Object) {
     return s3AsyncClient.getObject(GetObjectRequest.builder()
             .bucket(bucketName)
