@@ -1,0 +1,163 @@
+service 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Service
+public class S3Service {
+
+    private final AmazonS3 s3Client;
+
+    public S3Service() {
+        // Initialize the S3 client
+        this.s3Client = AmazonS3ClientBuilder.standard().build();
+    }
+
+    public void streamFilesToZip(String bucketName, String prefix, int startIndex, int count, OutputStream outputStream) throws IOException {
+        // Check if the bucket exists
+        if (!s3Client.doesBucketExistV2(bucketName)) {
+            throw new IllegalArgumentException("Bucket does not exist: " + bucketName);
+        }
+
+        String nextToken = null; // Pagination token
+        int downloadedCount = 0;
+        int currentIndex = 0;
+
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            do {
+                // Create a request with the pagination token
+                ListObjectsV2Request request = new ListObjectsV2Request()
+                        .withBucketName(bucketName)
+                        .withPrefix(prefix)
+                        .withContinuationToken(nextToken);
+
+                // List objects in the bucket
+                ListObjectsV2Result result = s3Client.listObjectsV2(request);
+
+                for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+                    String key = objectSummary.getKey();
+                    if (key.endsWith(".json") || key.endsWith(".xml")) {
+                        // Skip files until the startIndex is reached
+                        if (currentIndex < startIndex) {
+                            currentIndex++;
+                            continue;
+                        }
+
+                        // Stop after downloading the required number of files
+                        if (downloadedCount >= count * 2) break;
+
+                        // Stream the file from S3 directly into the zip
+                        S3Object s3Object = s3Client.getObject(bucketName, key);
+                        try (InputStream inputStream = s3Object.getObjectContent()) {
+                            // Add a new entry to the zip file
+                            ZipEntry zipEntry = new ZipEntry(key.substring(key.lastIndexOf("/") + 1));
+                            zipOutputStream.putNextEntry(zipEntry);
+
+                            // Write the file content to the zip
+                            byte[] buffer = new byte[8192]; // 8 KB buffer
+                            int bytesRead;
+                            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                                zipOutputStream.write(buffer, 0, bytesRead);
+                            }
+
+                            zipOutputStream.closeEntry();
+                            downloadedCount++;
+                        }
+                    }
+                }
+
+                // Get the next token for pagination
+                nextToken = result.getNextContinuationToken();
+            } while (nextToken != null && downloadedCount < count * 2); // Continue until all files are processed or the required count is reached
+        }
+    }
+}
+
+
+
+
+
+
+--------------------------------------\
+
+
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            errors.put(error.getField(), error.getDefaultMessage());
+        });
+        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+}
+
+------------------------------------------
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
+import java.io.IOException;
+import java.io.OutputStream;
+
+@RestController
+@Validated // Enable validation for this controller
+public class S3Controller {
+
+    @Autowired
+    private S3Service s3Service;
+
+    @GetMapping("/download-and-zip")
+    public void downloadAndZipFiles(
+            @RequestParam @NotEmpty(message = "Bucket name cannot be empty") String bucketName,
+            @RequestParam @NotEmpty(message = "Prefix cannot be empty") String prefix,
+            @RequestParam @NotNull(message = "Start index cannot be null") @Min(value = 0, message = "Start index must be greater than or equal to 0") int startIndex,
+            @RequestParam @NotNull(message = "Count cannot be null") @Min(value = 1, message = "Count must be greater than or equal to 1") int count,
+            HttpServletResponse response) throws IOException {
+
+        // Set response headers
+        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=files.zip");
+
+        // Stream files directly to the response output stream
+        try (OutputStream outputStream = response.getOutputStream()) {
+            s3Service.streamFilesToZip(bucketName, prefix, startIndex, count, outputStream);
+        }
+    }
+}
