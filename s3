@@ -1,11 +1,16 @@
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.core.ResponseBytes;
+import org.mockito.ArgumentMatchers;
 
 private void mockGetObject(String key, String content) {
     when(s3AsyncClient.getObject(
         argThat(req -> req.bucket().equals("bucket") && req.key().equals(key)),
-        any((Class<AsyncResponseTransformer<GetObjectResponse, ResponseBytes<GetObjectResponse>>>) AsyncResponseTransformer.class)
+        // Explicitly specify the generic type parameters
+        ArgumentMatchers.<AsyncResponseTransformer<GetObjectResponse, ResponseBytes<GetObjectResponse>>>any()
     )).thenReturn(CompletableFuture.completedFuture(
         ResponseBytes.fromByteArray(
-            GetObjectResponse.builder().build(),
+            GetObjectResponse.builder().build(), 
             content.getBytes()
         )
     ));
