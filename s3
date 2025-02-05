@@ -2,7 +2,36 @@
 
 
 
+@Test
+void testPaginationHandling() throws IOException {
+    // First page response
+    when(s3AsyncClient.listObjectsV2(argThat(req -> req.continuationToken() == null)))
+        .thenReturn(CompletableFuture.completedFuture(
+            ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key("prefix/file1.json").build())
+                .nextContinuationToken("token1")
+                .build()
+        ));
 
+    // Second page response
+    when(s3AsyncClient.listObjectsV2(argThat(req -> "token1".equals(req.continuationToken()))))
+        .thenReturn(CompletableFuture.completedFuture(
+            ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key("prefix/file1.xml").build())
+                .build()
+        ));
+
+    mockGetObject("prefix/file1.json", "json1");
+    mockGetObject("prefix/file1.xml", "xml1");
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    s3ZipService.streamFilesToZip("bucket", "prefix/", 0, 1, outputStream);
+
+    Map<String, String> zipEntries = readZipEntries(outputStream.toByteArray());
+    assertEquals(2, zipEntries.size());
+    assertTrue(zipEntries.containsKey("file1.json"));
+    assertTrue(zipEntries.containsKey("file1.xml"));
+}
 
 
 
