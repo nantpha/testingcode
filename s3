@@ -1,3 +1,39 @@
+@Test
+void testBasicPairDownload() throws IOException {
+    // Mock S3 listObjectsV2 response with one page of files
+    when(s3AsyncClient.listObjectsV2(any(ListObjectsV2Request.class)))
+        .thenReturn(CompletableFuture.completedFuture(
+            ListObjectsV2Response.builder()
+                .contents(
+                    S3Object.builder().key("prefix/file1.json").build(),
+                    S3Object.builder().key("prefix/file1.xml").build(),
+                    S3Object.builder().key("prefix/file2.json").build(),
+                    S3Object.builder().key("prefix/file2.xml").build()
+                )
+                .build()
+        ));
+
+    // Mock getObject responses
+    mockGetObject("prefix/file1.json", "json1");
+    mockGetObject("prefix/file1.xml", "xml1");
+    mockGetObject("prefix/file2.json", "json2");
+    mockGetObject("prefix/file2.xml", "xml2");
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    s3ZipService.streamFilesToZip("bucket", "prefix/", 0, 2, outputStream);
+
+    // Verify ZIP contains all four files with correct content
+    Map<String, String> zipEntries = readZipEntries(outputStream.toByteArray());
+    assertEquals(4, zipEntries.size());
+    assertEquals("json1", zipEntries.get("file1.json"));
+    assertEquals("xml1", zipEntries.get("file1.xml"));
+    assertEquals("json2", zipEntries.get("file2.json"));
+    assertEquals("xml2", zipEntries.get("file2.xml"));
+}
+
+
+
+
 private Map<String, String> readZipEntries(byte[] zipBytes) throws IOException {
     Map<String, String> entries = new HashMap<>();
     try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
