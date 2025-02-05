@@ -1,3 +1,78 @@
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.core.SdkBytes;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class S3ServiceTest {
+
+    @Mock
+    private S3AsyncClient s3AsyncClient;
+
+    private S3Service s3Service;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        s3Service = new S3Service(s3AsyncClient);
+    }
+
+    @Test
+    void testStreamFilesToZip() throws IOException {
+        // Mock the listObjectsV2 response
+        ListObjectsV2Response listResponse = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("prefix/file1.json").build(),
+                        S3Object.builder().key("prefix/file1.xml").build(),
+                        S3Object.builder().key("prefix/file2.json").build(),
+                        S3Object.builder().key("prefix/file2.xml").build()
+                )
+                .isTruncated(false)
+                .build();
+
+        when(s3AsyncClient.listObjectsV2(any(ListObjectsV2Request.class)))
+                .thenReturn(CompletableFuture.completedFuture(listResponse));
+
+        // Mock the getObject response
+        GetObjectResponse getObjectResponse = GetObjectResponse.builder().build();
+        SdkBytes sdkBytes = SdkBytes.fromUtf8String("file content");
+
+        when(s3AsyncClient.getObject(any(), any(AsyncResponseTransformer.class)))
+                .thenReturn(CompletableFuture.completedFuture(getObjectResponse))
+                .thenReturn(CompletableFuture.completedFuture(sdkBytes));
+
+        // Call the method under test
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        s3Service.streamFilesToZip("test-bucket", "prefix/", 0, 1, outputStream);
+
+        // Verify interactions
+        verify(s3AsyncClient, times(1)).listObjectsV2(any(ListObjectsV2Request.class));
+        verify(s3AsyncClient, times(2)).getObject(any(), any(AsyncResponseTransformer.class));
+
+        // Assert the output stream contains the expected zip content
+        byte[] zipContent = outputStream.toByteArray();
+        // You can further assert the content of the zip file if needed
+    }
+}
+
+
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
