@@ -1,3 +1,150 @@
+
+
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Service
+public class S3Service {
+
+    private final S3AsyncClient s3AsyncClient;
+
+    public S3Service() {
+        // Initialize the S3 Async Client
+        this.s3AsyncClient = S3AsyncClient.create();
+    }
+
+    public void streamFilesToZip(String bucketName, String prefix, int startIndex, int count, OutputStream outputStream) throws IOException {
+        String continuationToken = null; // Pagination token
+        int downloadedCount = 0;
+        int currentIndex = 0;
+
+        // Map to track file pairs (base name -> {json, xml})
+        Map<String, FilePair> filePairs = new HashMap<>();
+
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            do {
+                // Create a request with the pagination token
+                ListObjectsV2Request request = ListObjectsV2Request.builder()
+                        .bucket(bucketName)
+                        .prefix(prefix)
+                        .continuationToken(continuationToken)
+                        .build();
+
+                // List objects in the bucket asynchronously
+                CompletableFuture<ListObjectsV2Response> listObjectsFuture = s3AsyncClient.listObjectsV2(request);
+                ListObjectsV2Response result = listObjectsFuture.join(); // Block until the response is received
+
+                List<S3Object> objects = result.contents();
+                for (S3Object object : objects) {
+                    String key = object.key();
+                    String baseName = getBaseName(key);
+
+                    // Track .json and .xml files
+                    if (key.endsWith(".json")) {
+                        filePairs.computeIfAbsent(baseName, k -> new FilePair()).setJsonKey(key);
+                    } else if (key.endsWith(".xml")) {
+                        filePairs.computeIfAbsent(baseName, k -> new FilePair()).setXmlKey(key);
+                    }
+                }
+
+                // Get the next token for pagination
+                continuationToken = result.nextContinuationToken();
+            } while (continuationToken != null);
+
+            // Process file pairs
+            for (Map.Entry<String, FilePair> entry : filePairs.entrySet()) {
+                FilePair pair = entry.getValue();
+
+                // Skip files without a corresponding pair
+                if (pair.getJsonKey() == null || pair.getXmlKey() == null) {
+                    continue;
+                }
+
+                // Skip files until the startIndex is reached
+                if (currentIndex < startIndex) {
+                    currentIndex++;
+                    continue;
+                }
+
+                // Stop after downloading the required number of files
+                if (downloadedCount >= count * 2) break;
+
+                // Download and add .json file to the zip
+                downloadAndAddToZip(bucketName, pair.getJsonKey(), zipOutputStream);
+                downloadedCount++;
+
+                // Download and add .xml file to the zip
+                downloadAndAddToZip(bucketName, pair.getXmlKey(), zipOutputStream);
+                downloadedCount++;
+            }
+        }
+    }
+
+    private void downloadAndAddToZip(String bucketName, String key, ZipOutputStream zipOutputStream) {
+        CompletableFuture<Void> downloadFuture = s3AsyncClient.getObject(
+                builder -> builder.bucket(bucketName).key(key),
+                AsyncResponseTransformer.toBytes()
+        ).thenAccept(responseBytes -> {
+            try {
+                // Add a new entry to the zip file
+                ZipEntry zipEntry = new ZipEntry(key.substring(key.lastIndexOf("/") + 1));
+                zipOutputStream.putNextEntry(zipEntry);
+
+                // Write the file content to the zip
+                zipOutputStream.write(responseBytes.asByteArray());
+
+                zipOutputStream.closeEntry();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write file to zip", e);
+            }
+        });
+
+        downloadFuture.join(); // Block until the file is downloaded and written to the zip
+    }
+
+    private String getBaseName(String key) {
+        // Remove the file extension and path to get the base name
+        String fileName = key.substring(key.lastIndexOf("/") + 1);
+        return fileName.replace(".json", "").replace(".xml", "");
+    }
+
+    // Helper class to track .json and .xml file pairs
+    private static class FilePair {
+        private String jsonKey;
+        private String xmlKey;
+
+        public String getJsonKey() {
+            return jsonKey;
+        }
+
+        public void setJsonKey(String jsonKey) {
+            this.jsonKey = jsonKey;
+        }
+
+        public String getXmlKey() {
+            return xmlKey;
+        }
+
+        public void setXmlKey(String xmlKey) {
+            this.xmlKey = xmlKey;
+        }
+    }
+}
+----------------------
+
 service 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
