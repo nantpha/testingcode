@@ -1,6 +1,24 @@
+private Map<String, String> readZipEntries(byte[] zipBytes) throws IOException {
+    Map<String, String> entries = new HashMap<>();
+    try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+        ZipEntry entry;
+        while ((entry = zis.getNextEntry()) != null) {
+            String content = new String(zis.readAllBytes());
+            entries.put(entry.getName(), content);
+            zis.closeEntry();
+        }
+    }
+    return entries;
+}
 
-
-
+private void mockGetObject(String key, String content) {
+    when(s3AsyncClient.getObject(
+        argThat(req -> req.bucket().equals("bucket") && req.key().equals(key)),
+        any(AsyncResponseTransformer.class))
+    ).thenReturn(CompletableFuture.completedFuture(
+        ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), content.getBytes())
+    ));
+}
 
 @Test
 void testPaginationHandling() throws IOException {
