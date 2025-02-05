@@ -1,5 +1,316 @@
 
 
+
+
+
+
+
+
+
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Publisher;
+import org.reactivestreams.Subscriber;
+
+import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class S3ServiceTest {
+
+    @Mock
+    private S3AsyncClient s3AsyncClient;
+
+    @Mock
+    private ListObjectsV2Publisher listObjectsV2Publisher;
+
+    private S3Service s3Service;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        s3Service = new S3Service(s3AsyncClient);
+    }
+
+    @Test
+    void testCountFilesInBucket_Success() throws ExecutionException, InterruptedException {
+        // Arrange
+        String bucketName = "test-bucket";
+        ListObjectsV2Response response1 = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("file1.txt").build(),
+                        S3Object.builder().key("file2.txt").build()
+                )
+                .isTruncated(false) // No more pages
+                .build();
+
+        when(s3AsyncClient.listObjectsV2Paginator(any(ListObjectsV2Request.class)))
+                .thenReturn(listObjectsV2Publisher);
+
+        doAnswer(invocation -> {
+            Subscriber<? super ListObjectsV2Response> subscriber = invocation.getArgument(0);
+            subscriber.onSubscribe(mock(Subscription.class));
+            subscriber.onNext(response1);
+            subscriber.onComplete();
+            return null;
+        }).when(listObjectsV2Publisher).subscribe(any());
+
+        // Act
+        CompletableFuture<Integer> result = s3Service.countFilesInBucket(bucketName);
+        int fileCount = result.get();
+
+        // Assert
+        assertEquals(2, fileCount);
+        verify(s3AsyncClient, times(1)).listObjectsV2Paginator(any(ListObjectsV2Request.class));
+    }
+
+    @Test
+    void testCountFilesInBucket_Pagination() throws ExecutionException, InterruptedException {
+        // Arrange
+        String bucketName = "test-bucket";
+        ListObjectsV2Response response1 = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("file1.txt").build(),
+                        S3Object.builder().key("file2.txt").build()
+                )
+                .isTruncated(true) // More pages to fetch
+                .nextContinuationToken("next-token")
+                .build();
+
+        ListObjectsV2Response response2 = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("file3.txt").build()
+                )
+                .isTruncated(false) // No more pages
+                .build();
+
+        when(s3AsyncClient.listObjectsV2Paginator(any(ListObjectsV2Request.class)))
+                .thenReturn(listObjectsV2Publisher);
+
+        doAnswer(invocation -> {
+            Subscriber<? super ListObjectsV2Response> subscriber = invocation.getArgument(0);
+            subscriber.onSubscribe(mock(Subscription.class));
+            subscriber.onNext(response1);
+            subscriber.onNext(response2);
+            subscriber.onComplete();
+            return null;
+        }).when(listObjectsV2Publisher).subscribe(any());
+
+        // Act
+        CompletableFuture<Integer> result = s3Service.countFilesInBucket(bucketName);
+        int fileCount = result.get();
+
+        // Assert
+        assertEquals(3, fileCount);
+        verify(s3AsyncClient, times(1)).listObjectsV2Paginator(any(ListObjectsV2Request.class));
+    }
+
+    @Test
+    void testCountFilesInBucket_Error() {
+        // Arrange
+        String bucketName = "test-bucket";
+        when(s3AsyncClient.listObjectsV2Paginator(any(ListObjectsV2Request.class)))
+                .thenReturn(listObjectsV2Publisher);
+
+        doAnswer(invocation -> {
+            Subscriber<? super ListObjectsV2Response> subscriber = invocation.getArgument(0);
+            subscriber.onSubscribe(mock(Subscription.class));
+            subscriber.onError(new RuntimeException("S3 error"));
+            return null;
+        }).when(listObjectsV2Publisher).subscribe(any());
+
+        // Act & Assert
+        CompletableFuture<Integer> result = s3Service.countFilesInBucket(bucketName);
+        ExecutionException exception = assertThrows(ExecutionException.class, result::get);
+        assertEquals("S3 error", exception.getCause().getMessage());
+    }
+
+    @Test
+    void testCountFilesInBucket_InvalidBucketName() {
+        // Arrange
+        String bucketName = "";
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> s3Service.countFilesInBucket(bucketName)
+        );
+        assertEquals("Bucket name cannot be null or empty", exception.getMessage());
+    }
+}
+
+---------------------------
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class S3ServiceTest {
+
+    @Mock
+    private S3AsyncClient s3AsyncClient;
+
+    @InjectMocks
+    private S3Service s3Service;
+
+    private ByteArrayOutputStream outputStream;
+
+    @BeforeEach
+    public void setUp() {
+        outputStream = new ByteArrayOutputStream();
+    }
+
+    @Test
+    public void testStreamFilesToZip_WithValidPairs() throws IOException {
+        // Mock S3 response for listObjectsV2
+        ListObjectsV2Response listResponse = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("folder/file1.json").build(),
+                        S3Object.builder().key("folder/file1.xml").build(),
+                        S3Object.builder().key("folder/file2.json").build(),
+                        S3Object.builder().key("folder/file2.xml").build()
+                )
+                .build();
+        when(s3AsyncClient.listObjectsV2(any(ListObjectsV2Request.class)))
+                .thenReturn(CompletableFuture.completedFuture(listResponse));
+
+        // Mock S3 response for getObject
+        when(s3AsyncClient.getObject(any(), any(AsyncResponseTransformer.class)))
+                .thenReturn(CompletableFuture.completedFuture(SdkBytes.fromUtf8String("file content")));
+
+        // Call the method under test
+        s3Service.streamFilesToZip("test-bucket", "folder/", 0, 2, outputStream);
+
+        // Verify the output
+        byte[] zipBytes = outputStream.toByteArray();
+        assertTrue(zipBytes.length > 0, "Zip file should not be empty");
+
+        // Verify interactions
+        verify(s3AsyncClient, times(1)).listObjectsV2(any(ListObjectsV2Request.class));
+        verify(s3AsyncClient, times(4)).getObject(any(), any(AsyncResponseTransformer.class));
+    }
+
+    @Test
+    public void testStreamFilesToZip_WithMissingPairs() throws IOException {
+        // Mock S3 response for listObjectsV2
+        ListObjectsV2Response listResponse = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("folder/file1.json").build(),
+                        S3Object.builder().key("folder/file2.xml").build()
+                )
+                .build();
+        when(s3AsyncClient.listObjectsV2(any(ListObjectsV2Request.class)))
+                .thenReturn(CompletableFuture.completedFuture(listResponse));
+
+        // Call the method under test
+        s3Service.streamFilesToZip("test-bucket", "folder/", 0, 2, outputStream);
+
+        // Verify the output
+        byte[] zipBytes = outputStream.toByteArray();
+        assertEquals(0, zipBytes.length, "Zip file should be empty (no valid pairs)");
+
+        // Verify interactions
+        verify(s3AsyncClient, times(1)).listObjectsV2(any(ListObjectsV2Request.class));
+        verify(s3AsyncClient, never()).getObject(any(), any(AsyncResponseTransformer.class));
+    }
+
+    @Test
+    public void testStreamFilesToZip_WithStartIndex() throws IOException {
+        // Mock S3 response for listObjectsV2
+        ListObjectsV2Response listResponse = ListObjectsV2Response.builder()
+                .contents(
+                        S3Object.builder().key("folder/file1.json").build(),
+                        S3Object.builder().key("folder/file1.xml").build(),
+                        S3Object.builder().key("folder/file2.json").build(),
+                        S3Object.builder().key("folder/file2.xml").build()
+                )
+                .build();
+        when(s3AsyncClient.listObjectsV2(any(ListObjectsV2Request.class)))
+                .thenReturn(CompletableFuture.completedFuture(listResponse));
+
+        // Mock S3 response for getObject
+        when(s3AsyncClient.getObject(any(), any(AsyncResponseTransformer.class)))
+                .thenReturn(CompletableFuture.completedFuture(SdkBytes.fromUtf8String("file content")));
+
+        // Call the method under test with startIndex = 1
+        s3Service.streamFilesToZip("test-bucket", "folder/", 1, 1, outputStream);
+
+        // Verify the output
+        byte[] zipBytes = outputStream.toByteArray();
+        assertTrue(zipBytes.length > 0, "Zip file should not be empty");
+
+        // Verify interactions
+        verify(s3AsyncClient, times(1)).listObjectsV2(any(ListObjectsV2Request.class));
+        verify(s3AsyncClient, times(2)).getObject(any(), any(AsyncResponseTransformer.class));
+    }
+
+    @Test
+    public void testStreamFilesToZip_WithInvalidBucket() {
+        // Mock S3 response for listObjectsV2 to simulate an error
+        when(s3AsyncClient.listObjectsV2(any(ListObjectsV2Request.class)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Bucket not found")));
+
+        // Call the method under test and expect an exception
+        assertThrows(RuntimeException.class, () -> {
+            s3Service.streamFilesToZip("invalid-bucket", "folder/", 0, 2, outputStream);
+        });
+
+        // Verify interactions
+        verify(s3AsyncClient, times(1)).listObjectsV2(any(ListObjectsV2Request.class));
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
