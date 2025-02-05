@@ -1,3 +1,148 @@
+
+
+
+
+
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.async.AsyncResponseTransformer;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class S3ServiceTest {
+
+    @Mock
+    private S3AsyncClient s3AsyncClient;
+
+    // Assuming you have this annotation in your S3Service class
+    @InjectMocks 
+    private S3Service s3Service;
+
+    @Captor
+    private ArgumentCaptor<ListObjectsV2Request> listObjectsV2RequestCaptor;
+
+    @Captor
+    private ArgumentCaptor<GetObjectRequest> getObjectRequestCaptor;
+
+
+    @Test
+    public void testStreamFilesToZip_Success() throws IOException {
+        String bucketName = "test-bucket";
+        String prefix = "test-prefix/";
+        int startIndex = 0;
+        int count = 1;
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        // Mock S3 responses
+        S3Object jsonObject = S3Object.builder().key(prefix + "file1.json").build();
+        S3Object xmlObject = S3Object.builder().key(prefix + "file1.xml").build();
+        ListObjectsV2Response response = ListObjectsV2Response.builder().contents(jsonObject, xmlObject).build();
+
+        when(s3AsyncClient.listObjectsV2(listObjectsV2RequestCaptor.capture())).thenReturn(CompletableFuture.completedFuture(response));
+        when(s3AsyncClient.getObject(getObjectRequestCaptor.capture(), any(AsyncResponseTransformer.class))).thenReturn(CompletableFuture.completedFuture(new TestBytes("json content".getBytes())), CompletableFuture.completedFuture(new TestBytes("xml content".getBytes())));
+
+
+        s3Service.streamFilesToZip(bucketName, prefix, startIndex, count, outputStream);
+
+        // Assertions for zip file content (as before)
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            ZipEntry jsonEntry = zipOutputStream.getNextEntry();
+            assertEquals("file1.json", jsonEntry.getName());
+            byte[] jsonBytes = zipOutputStream.read(new byte[1024]);
+            assertEquals("json content", new String(jsonBytes).trim()); //trim removes potential nulls from byte array conversion
+
+            ZipEntry xmlEntry = zipOutputStream.getNextEntry();
+            assertEquals("file1.xml", xmlEntry.getName());
+            byte[] xmlBytes = zipOutputStream.read(new byte[1024]);
+            assertEquals("xml content", new String(xmlBytes).trim());
+
+        }
+
+
+        // Verify interactions with S3 client
+        verify(s3AsyncClient, times(1)).listObjectsV2(listObjectsV2RequestCaptor.getValue());
+        assertEquals(bucketName, listObjectsV2RequestCaptor.getValue().bucket());
+        assertEquals(prefix, listObjectsV2RequestCaptor.getValue().prefix());
+
+        List<GetObjectRequest> capturedGetRequests = getObjectRequestCaptor.getAllValues();
+        assertEquals(2, capturedGetRequests.size());  // Expecting two getObject calls (json and xml)
+
+        assertEquals(bucketName, capturedGetRequests.get(0).bucket());
+        assertEquals(prefix + "file1.json", capturedGetRequests.get(0).key());
+
+        assertEquals(bucketName, capturedGetRequests.get(1).bucket());
+        assertEquals(prefix + "file1.xml", capturedGetRequests.get(1).key());
+    }
+
+    // ... (Other test methods - pagination, startIndex/count - with similar corrections)
+
+    private static class TestBytes { // Helper class for testing
+        private final byte[] bytes;
+
+        public TestBytes(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        public byte[] asByteArray() {
+            return bytes;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.core.ResponseBytes;
