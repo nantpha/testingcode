@@ -1,3 +1,55 @@
+
+@Service
+public class S3FileService {
+
+    private final S3AsyncClient s3AsyncClient;
+    private final String bucketName = "your-bucket-name";
+
+    public S3FileService(S3AsyncClient s3AsyncClient) {
+        this.s3AsyncClient = s3AsyncClient;
+    }
+
+    public void downloadAndZipFiles(OutputStream outputStream, int index, int count) throws IOException {
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+            for (int i = index; i < index + count; i++) {
+                String baseFileName = "file-" + i; // Common name for both JSON & XML
+                String jsonKey = baseFileName + ".json";
+                String xmlKey = baseFileName + ".xml";
+
+                // Add JSON file to ZIP
+                futures.add(addFileToZip(zipOutputStream, jsonKey));
+                // Add XML file to ZIP
+                futures.add(addFileToZip(zipOutputStream, xmlKey));
+            }
+
+            // Wait for all files to be added
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        }
+    }
+
+    private CompletableFuture<Void> addFileToZip(ZipOutputStream zipOutputStream, String fileKey) {
+        return s3AsyncClient.getObject(GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(fileKey)
+                        .build(),
+                AsyncResponseTransformer.toBytes())
+                .thenAccept(response -> {
+                    try {
+                        zipOutputStream.putNextEntry(new ZipEntry(fileKey));
+                        zipOutputStream.write(response.asByteArray());
+                        zipOutputStream.closeEntry();
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+    }
+}
+
+
+
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
