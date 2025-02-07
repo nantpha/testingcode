@@ -1,4 +1,71 @@
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@RestController
+public class FileDownloadController {
+
+    @GetMapping("/download")
+    public ResponseEntity<StreamingResponseBody> downloadFiles(
+            @RequestParam int index,
+            @RequestParam int count) {
+
+        // Define the response headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=files.zip");
+        headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
+
+        // Create a StreamingResponseBody to stream the zip file
+        StreamingResponseBody responseBody = new StreamingResponseBody() {
+            @Override
+            public void writeTo(OutputStream outputStream) throws IOException {
+                try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
+                    for (int i = index; i < index + count; i++) {
+                        String fileName = "file_" + i;
+
+                        // Generate JSON content
+                        String jsonContent = String.format("{\"name\":\"%s\", \"type\":\"json\"}", fileName);
+                        zipOut.putNextEntry(new ZipEntry(fileName + ".json"));
+                        zipOut.write(jsonContent.getBytes());
+                        zipOut.closeEntry();
+
+                        // Generate XML content
+                        String xmlContent = String.format("<name>%s</name><type>xml</type>", fileName);
+                        zipOut.putNextEntry(new ZipEntry(fileName + ".xml"));
+                        zipOut.write(xmlContent.getBytes());
+                        zipOut.closeEntry();
+                    }
+                }
+            }
+        };
+
+        // Return the streaming response
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(responseBody);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
