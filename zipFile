@@ -6,15 +6,13 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 @Service
 public class ExcelService {
 
-    public List<List<String>> readExcelFile(File file) throws IOException {
-        List<List<String>> data = new ArrayList<>();
+    public String convertExcelToHtmlTable(File file) throws IOException {
+        StringBuilder htmlTable = new StringBuilder();
+        htmlTable.append("<table border='1'>");
 
         // Open the Excel file
         FileInputStream fis = new FileInputStream(file);
@@ -29,29 +27,20 @@ public class ExcelService {
 
         // Iterate through sheets
         if (workbook != null) {
-            Sheet sheet = workbook.getSheetAt(0); // Read the first sheet (you can change this to read other sheets)
-            Iterator<Row> rowIterator = sheet.iterator();
-
-            // Iterate through rows
-            while (rowIterator.hasNext()) {
-                Row row = rowIterator.next();
-                List<String> rowData = new ArrayList<>();
-
-                // Iterate through columns (cells)
-                Iterator<Cell> cellIterator = row.cellIterator();
-                while (cellIterator.hasNext()) {
-                    Cell cell = cellIterator.next();
-                    rowData.add(getCellValue(cell));
+            Sheet sheet = workbook.getSheetAt(0); // Read the first sheet
+            for (Row row : sheet) {
+                htmlTable.append("<tr>");
+                for (Cell cell : row) {
+                    htmlTable.append("<td>").append(getCellValue(cell)).append("</td>");
                 }
-
-                data.add(rowData); // Add row data to the list
+                htmlTable.append("</tr>");
             }
-
             workbook.close();
         }
 
+        htmlTable.append("</table>");
         fis.close();
-        return data;
+        return htmlTable.toString();
     }
 
     // Utility method to get cell value as String
