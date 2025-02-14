@@ -1,0 +1,86 @@
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
+
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+
+public class S3Service {
+
+    private final S3Client s3Client;
+    private final ThreadPoolTaskExecutor taskExecutor;
+    private final BlockingQueue<List<S3Object>> queue = new LinkedBlockingQueue<>(10);
+
+    public S3Service(S3Client s3Client) {
+        this.s3Client = s3Client;
+
+        // Initialize ThreadPool
+        this.taskExecutor = new ThreadPoolTaskExecutor();
+        this.taskExecutor.setCorePoolSize(3); // Number of parallel fetchers
+        this.taskExecutor.setMaxPoolSize(5);
+        this.taskExecutor.setQueueCapacity(10);
+        this.taskExecutor.initialize();
+    }
+
+    public void fetchAndProcessS3Objects(int targetCount) {
+        int numFetchers = 3; // Dynamically configure the number of fetchers
+
+        ExecutorService fetcherPool = Executors.newFixedThreadPool(numFetchers);
+        ExecutorService processorPool = Executors.newSingleThreadExecutor();
+
+        final String bucketName = "your-bucket-name";
+        final int maxKeys = 1000;
+        final AtomicInteger totalCount = new AtomicInteger(0);
+        final AtomicReference<String> continuationToken = new AtomicReference<>(null);
+
+        // Fetcher Task
+        Runnable fetcherTask = () -> {
+            while (totalCount.get() < targetCount) {
+                ListObjectsV2Request request = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .maxKeys(maxKeys)
+                    .continuationToken(continuationToken.get())
+                    .build();
+
+                ListObjectsV2Response response = s3Client.listObjectsV2(request);
+                if (response.contents().isEmpty()) return;
+
+                try {
+                    queue.put(response.contents()); // Store in queue
+                    totalCount.addAndGet(response.contents().size());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+
+                if (!response.isTruncated()) return;
+                continuationToken.set(response.nextContinuationToken());
+            }
+        };
+
+        // Dynamically submit fetcher tasks based on the number of threads
+        fetcherPool.invokeAll(
+            List.of(Executors.callable(fetcherTask), Executors.callable(fetcherTask), Executors.callable(fetcherTask))
+        );
+
+        // Processor Task
+        processorPool.submit(() -> {
+            while (totalCount.get() < targetCount) {
+                try {
+                    List<S3Object> objects = queue.take();
+                    processObjectsInChunks(objects);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
+        fetcherPool.shutdown();
+        processorPool.shutdown();
+    }
+
+    private void processObjectsInChunks(List<S3Object> objects) {
+        // Implement chunk processing logic
+    }
+}
