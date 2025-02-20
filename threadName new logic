@@ -1,3 +1,161 @@
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+public class S3MultiThreadedProcessor {
+    private static final Logger log = LoggerFactory.getLogger(S3MultiThreadedProcessor.class);
+    private final ExecutorService fetcherPool;
+    private final ExecutorService processorPool;
+    private final AtomicInteger totalCount;
+    private final int targetCount;
+    private final String bucketName;
+    private final int maxKeys;
+    private final S3Client s3Client;
+    private final AtomicReference<String> continuationToken;
+    private final int numFetchers;
+
+    public S3MultiThreadedProcessor(int targetCount, String bucketName, int maxKeys, S3Client s3Client, 
+                                    int numFetchers, int numProcessors) {
+        this.fetcherPool = Executors.newFixedThreadPool(numFetchers);
+        this.processorPool = Executors.newFixedThreadPool(numProcessors);
+        this.totalCount = new AtomicInteger(0);
+        this.targetCount = targetCount;
+        this.bucketName = bucketName;
+        this.maxKeys = maxKeys;
+        this.s3Client = s3Client;
+        this.continuationToken = new AtomicReference<>(null);
+        this.numFetchers = numFetchers;
+    }
+
+    public void getFetchAndProcess() {
+        try {
+            for (int i = 0; i < numFetchers; i++) {
+                fetcherPool.submit(this::fetchAndSubmitTasks);
+            }
+        } catch (Exception e) {
+            log.error("Error starting fetch and process", e);
+            shutdown();
+            throw e;
+        }
+    }
+
+    private void fetchAndSubmitTasks() {
+        while (totalCount.get() < targetCount && !fetcherPool.isShutdown()) {
+            String currentToken = continuationToken.get();
+            if (currentToken == null && totalCount.get() >= targetCount) break;
+
+            List<S3Object> objects = fetchBatch(currentToken);
+            if (objects == null || objects.isEmpty()) {
+                break;
+            }
+
+            int newCount = totalCount.addAndGet(objects.size());
+            if (newCount > targetCount) {
+                int excess = newCount - targetCount;
+                objects = new ArrayList<>(objects).subList(0, objects.size() - excess);
+            }
+
+            processorPool.submit(() -> {
+                try {
+                    processObjectsInChunks(objects);
+                } catch (Exception e) {
+                    log.error("Error processing batch", e);
+                }
+            });
+
+            log.info("Fetcher {} submitted {} objects, totalCount: {}", 
+                     Thread.currentThread().getName(), objects.size(), totalCount.get());
+        }
+    }
+
+    private List<S3Object> fetchBatch(String token) {
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+            .bucket(bucketName)
+            .maxKeys(maxKeys)
+            .continuationToken(token)
+            .build();
+
+        try {
+            ListObjectsV2Response response = s3Client.listObjectsV2(request);
+            if (response.contents().isEmpty()) {
+                continuationToken.compareAndSet(null, null);
+                return null;
+            }
+
+            List<S3Object> objects = response.contents();
+
+            if (response.isTruncated()) {
+                continuationToken.compareAndSet(null, response.nextContinuationToken());
+            } else {
+                continuationToken.compareAndSet(null, null);
+            }
+
+            return objects;
+        } catch (Exception e) {
+            log.error("Error fetching batch", e);
+            continuationToken.compareAndSet(token, null);
+            return null;
+        }
+    }
+
+    private void processObjectsInChunks(List<S3Object> objects) {
+        try {
+            log.info("Processing {} objects in thread {}", objects.size(), Thread.currentThread().getName());
+            Thread.sleep(500); // Simulate work
+        } catch (Exception e) {
+            log.error("Error in processObjectsInChunks", e);
+        }
+    }
+
+    private void shutdown() {
+        fetcherPool.shutdown();
+        processorPool.shutdown();
+        try {
+            if (!fetcherPool.awaitTermination(10, TimeUnit.MINUTES)) {
+                log.warn("Fetcher pool did not terminate in time, forcing shutdown");
+                fetcherPool.shutdownNow();
+            }
+            if (!processorPool.awaitTermination(10, TimeUnit.MINUTES)) {
+                log.warn("Processor pool did not terminate in time, forcing shutdown");
+                processorPool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            log.error("Shutdown interrupted", e);
+            Thread.currentThread().interrupt();
+            fetcherPool.shutdownNow();
+            processorPool.shutdownNow();
+        }
+    }
+}
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
