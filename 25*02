@@ -1,0 +1,83 @@
+import java.util.concurrent.*;
+import java.util.*;
+import java.util.stream.*;
+import software.amazon.awssdk.services.s3.*;
+import software.amazon.awssdk.services.s3.model.*;
+
+public class S3ParallelProcessor {
+    private final S3Client s3Client;
+    private final BlockingQueue<List<S3Object>> queue = new LinkedBlockingQueue<>(3); // Prevents excessive memory usage
+    private final Set<String> processedKeys = ConcurrentHashMap.newKeySet(); // Prevents duplicate processing
+    private final ExecutorService threadPool; // Unified pool for fetcher and processor
+    private final AtomicInteger totalCount = new AtomicInteger(0);
+    private final int targetCount;
+    private final String bucketName;
+    private final int maxKeys;
+
+    public S3ParallelProcessor(S3Client s3Client, int threadCount, int targetCount, String bucketName, int maxKeys) {
+        this.s3Client = s3Client;
+        this.targetCount = targetCount;
+        this.bucketName = bucketName;
+        this.maxKeys = maxKeys;
+        this.threadPool = Executors.newFixedThreadPool(threadCount); // Unified pool for fetching & processing
+    }
+
+    public void startProcessing() {
+        threadPool.submit(() -> {
+            String continuationToken = null;
+
+            while (totalCount.get() < targetCount) {
+                ListObjectsV2Request request = ListObjectsV2Request.builder()
+                        .bucket(bucketName)
+                        .maxKeys(maxKeys)
+                        .continuationToken(continuationToken)
+                        .build();
+
+                ListObjectsV2Iterable response = s3Client.listObjectsV2Paginator(request);
+                List<S3Object> objects = StreamSupport.stream(response.spliterator(), false)
+                        .flatMap(page -> page.contents().stream())
+                        .filter(obj -> processedKeys.add(obj.key())) // Filters out duplicate objects
+                        .collect(Collectors.toList());
+
+                if (objects.isEmpty()) break; // Stop fetching if no new objects found
+
+                try {
+                    queue.put(objects); // Blocks if queue is full
+                    totalCount.addAndGet(objects.size());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                // Update continuation token for next request
+                continuationToken = response.iterator().hasNext() ? response.iterator().next().nextContinuationToken() : null;
+            }
+        });
+
+        threadPool.submit(() -> {
+            while (totalCount.get() < targetCount) {
+                try {
+                    List<S3Object> objects = queue.poll(10, TimeUnit.SECONDS); // Avoid indefinite blocking
+                    if (objects != null) {
+                        processObjectsInChunks(objects);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        });
+    }
+
+    private void processObjectsInChunks(List<S3Object> objects) {
+        int chunkSize = 300;
+        for (int i = 0; i < objects.size(); i += chunkSize) {
+            List<S3Object> chunk = objects.subList(i, Math.min(i + chunkSize, objects.size()));
+            threadPool.submit(() -> processChunk(chunk)); // Process each chunk asynchronously
+        }
+    }
+
+    private void processChunk(List<S3Object> chunk) {
+        // Implement object processing logic here
+    }
+}
