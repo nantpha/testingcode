@@ -1,0 +1,80 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Properties;
+
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+public class ResultSetToEmail {
+
+    public static void main(String[] args) {
+
+        String jdbcUrl = "jdbc:mysql://your_host:your_port/your_database"; // Replace with your database URL
+        String username = "your_username"; // Replace with your database username
+        String password = "your_password"; // Replace with your database password
+        String tableName = "your_table"; // Replace with your table name
+        String recipientEmail = "recipient@example.com"; // Replace with the recipient's email
+        String senderEmail = "sender@example.com"; // Replace with your sender email
+        String senderPassword = "your_sender_password"; // Replace with your sender password
+
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM " + tableName)) {
+
+            StringBuilder emailBody = new StringBuilder();
+            java.sql.ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            // Append column headers
+            for (int i = 1; i <= columnCount; i++) {
+                emailBody.append(metaData.getColumnName(i)).append("\t"); // Use tab or other delimiter
+            }
+            emailBody.append("\n"); // Newline after headers
+
+            // Append rows
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    emailBody.append(resultSet.getString(i)).append("\t"); // Use tab or other delimiter
+                }
+                emailBody.append("\n"); // Newline after each row
+            }
+
+            sendEmail(recipientEmail, senderEmail, senderPassword, "Database Table Data", emailBody.toString());
+
+            System.out.println("Email sent successfully.");
+
+        } catch (SQLException | MessagingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void sendEmail(String to, String from, String password, String subject, String body) throws MessagingException {
+
+        Properties properties = new Properties();
+        properties.put("mail.smtp.auth", "true");
+        properties.put("mail.smtp.starttls.enable", "true");
+        properties.put("mail.smtp.host", "smtp.gmail.com"); // Or your SMTP server
+        properties.put("mail.smtp.port", "587"); // Or your SMTP port
+
+        Session session = Session.getInstance(properties, new javax.mail.Authenticator() {
+            protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
+                return new javax.mail.PasswordAuthentication(from, password);
+            }
+        });
+
+        Message message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(from));
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+        message.setSubject(subject);
+        message.setText(body);
+
+        Transport.send(message);
+    }
+}
