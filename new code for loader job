@@ -1,0 +1,56 @@
+@Service
+public class S3Processor {
+
+    @Autowired
+    private AmazonS3 s3Client;
+    @Value("${chunk.size:300}")
+    private int chunkSize;
+    @Value("${max.processed.files:1000000}")
+    private long maxProcessedFiles;
+
+    @Async
+    public void execute(String bucketName, String prefix) {
+        List<S3ObjectSummary> allKeys = new ArrayList<>();
+        String continuationToken = null;
+        long totalProcessed = 0;
+
+        do {
+            ListObjectsV2Request request = new ListObjectsV2Request()
+                .withBucketName(bucketName)
+                .withPrefix(prefix)
+                .withMaxKeys(1000)
+                .withContinuationToken(continuationToken);
+
+            ListObjectsV2Result result = s3Client.listObjectsV2(request);
+            allKeys.addAll(result.getObjectSummaries());
+            continuationToken = result.getNextContinuationToken();
+
+            // Process in chunks
+            List<List<S3ObjectSummary>> chunks = Lists.partition(allKeys, chunkSize);
+            totalProcessed += processChunksInParallel(chunks);
+
+            allKeys.clear(); // Clear memory after processing
+            if (totalProcessed >= maxProcessedFiles) {
+                break;
+            }
+        } while (continuationToken != null);
+
+        log.info("Processed {} files from {}/{}", totalProcessed, bucketName, prefix);
+    }
+
+    private long processChunksInParallel(List<List<S3ObjectSummary>> chunks) {
+        List<CompletableFuture<Long>> futures = chunks.stream()
+            .map(chunk -> CompletableFuture.supplyAsync(() -> processChunk(chunk), Executors.newFixedThreadPool(4)))
+            .collect(Collectors.toList());
+
+        return futures.stream()
+            .map(CompletableFuture::join)
+            .mapToLong(Long::longValue)
+            .sum();
+    }
+
+    private long processChunk(List<S3ObjectSummary> chunk) {
+        // Your existing chunk processing logic
+        return chunk.size();
+    }
+}
