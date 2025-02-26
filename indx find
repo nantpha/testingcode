@@ -17,6 +17,115 @@ public class S3AsyncObjectFetcher {
 
     public CompletableFuture<List<S3Object>> getObjectsFromIndex(int startIndex, int count) {
         List<S3Object> resultObjects = new ArrayList<>();
+        int[] currentIndex = {0};
+        
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+            .bucket(bucketName)
+            .maxKeys(Math.min(count, 1000)) // AWS max is 1000 per request
+            .build();
+
+        CompletableFuture<List<S3Object>> future = new CompletableFuture<>();
+        fetchObjects(request, resultObjects, startIndex, count, currentIndex, future);
+        
+        return future;
+    }
+
+    private void fetchObjects(ListObjectsV2Request request,
+                           List<S3Object> resultObjects,
+                           int startIndex,
+                           int count,
+                           int[] currentIndex,
+                           CompletableFuture<List<S3Object>> future) {
+        
+        s3Client.listObjectsV2(request).whenComplete((response, throwable) -> {
+            if (throwable != null) {
+                future.completeExceptionally(throwable);
+                return;
+            }
+
+            List<S3Object> objects = response.contents();
+            int objectsInBatch = objects.size();
+
+            // Check if this batch contains our starting point
+            if (currentIndex[0] + objectsInBatch >= startIndex) {
+                // Calculate how many to skip and how many we still need
+                int skipCount = Math.max(0, startIndex - currentIndex[0]);
+                int remainingCount = count - resultObjects.size();
+                
+                // Only take what we need from this batch
+                int batchTakeCount = Math.min(remainingCount, objectsInBatch - skipCount);
+                if (batchTakeCount > 0) {
+                    List<S3Object> relevantObjects = objects.subList(
+                        skipCount,
+                        skipCount + batchTakeCount
+                    );
+                    resultObjects.addAll(relevantObjects);
+                }
+            }
+
+            currentIndex[0] += objectsInBatch;
+
+            // Decide if we need to continue
+            boolean needMoreObjects = resultObjects.size() < count;
+            boolean hasMoreObjects = response.nextContinuationToken() != null;
+
+            if (needMoreObjects && hasMoreObjects) {
+                int remainingToFetch = count - resultObjects.size();
+                ListObjectsV2Request nextRequest = request.toBuilder()
+                    .continuationToken(response.nextContinuationToken())
+                    .maxKeys(Math.min(remainingToFetch, 1000))
+                    .build();
+                fetchObjects(nextRequest, resultObjects, startIndex, count, currentIndex, future);
+            } else {
+                future.complete(resultObjects);
+            }
+        });
+    }
+
+    public static void main(String[] args) {
+        S3AsyncClient s3Client = S3AsyncClient.builder().build();
+        String bucketName = "your-bucket-name";
+        
+        S3AsyncObjectFetcher fetcher = new S3AsyncObjectFetcher(s3Client, bucketName);
+        
+        fetcher.getObjectsFromIndex(20000, 5)
+            .thenAccept(objects -> {
+                System.out.println("Retrieved " + objects.size() + " objects:");
+                objects.forEach(obj -> 
+                    System.out.println("Key: " + obj.key()));
+            })
+            .exceptionally(throwable -> {
+                System.err.println("Error: " + throwable.getMessage());
+                return null;
+            })
+            .join();
+    }
+}
+
+
+
+
+
+
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+public class S3AsyncObjectFetcher {
+    private final S3AsyncClient s3Client;
+    private final String bucketName;
+
+    public S3AsyncObjectFetcher(S3AsyncClient s3Client, String bucketName) {
+        this.s3Client = s3Client;
+        this.bucketName = bucketName;
+    }
+
+    public CompletableFuture<List<S3Object>> getObjectsFromIndex(int startIndex, int count) {
+        List<S3Object> resultObjects = new ArrayList<>();
         int[] currentIndex = {0}; // Using array to modify in lambda
         
         // Initial request
