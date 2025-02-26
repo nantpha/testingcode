@@ -4,6 +4,155 @@ import com.amazonaws.services.s3.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.PreDestroy;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+@Service
+public class OptimizedS3Processor {
+    private static final Logger log = LoggerFactory.getLogger(OptimizedS3Processor.class);
+    
+    private final AmazonS3 s3Client;
+    private final ExecutorService processingExecutor;
+    private final AtomicLong totalProcessed = new AtomicLong(0);
+    
+    @Value("${chunk.size:300}")
+    private int chunkSize;
+    
+    @Value("${max.files:1000000}")
+    private long maxFiles;
+    
+    @Value("${max.threads:32}")
+    private int maxThreads;
+    
+    @Value("${processing.timeout.minutes:60}")
+    private long timeoutMinutes;
+
+    @Autowired
+    public OptimizedS3Processor(AmazonS3 s3Client) {
+        this.s3Client = s3Client;
+        this.processingExecutor = new ThreadPoolExecutor(
+            Runtime.getRuntime().availableProcessors(),
+            maxThreads,
+            60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(1000),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+    }
+
+    @Async
+    public CompletableFuture<Void> execute(String bucketName, String prefix) {
+        final long startTime = System.currentTimeMillis();
+        
+        return CompletableFuture.runAsync(() -> {
+            String continuationToken = null;
+            do {
+                if (isProcessingComplete() || isTimeout(startTime)) break;
+                
+                ListObjectsV2Result result = s3Client.listObjectsV2(new ListObjectsV2Request()
+                    .withBucketName(bucketName)
+                    .withPrefix(prefix)
+                    .withMaxKeys(1000)
+                    .withContinuationToken(continuationToken));
+                
+                processResultBatch(result.getObjectSummaries());
+                continuationToken = result.getNextContinuationToken();
+                
+            } while (continuationToken != null && !isProcessingComplete() && !isTimeout(startTime));
+            
+        }, processingExecutor).whenComplete((v, t) -> {
+            if (t != null) {
+                log.error("Processing failed for {}/{}", bucketName, prefix, t);
+            } else {
+                log.info("Processed {} files from {}/{} in {} minutes",
+                    totalProcessed.get(),
+                    bucketName,
+                    prefix,
+                    (System.currentTimeMillis() - startTime) / 60000);
+            }
+        });
+    }
+
+    private void processResultBatch(List<S3ObjectSummary> objects) {
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        
+        for (int i = 0; i < objects.size(); i += chunkSize) {
+            if (isProcessingComplete()) break;
+            
+            List<S3ObjectSummary> chunk = objects.subList(i, Math.min(i + chunkSize, objects.size()));
+            futures.add(processChunkAsync(chunk));
+        }
+        
+        // Wait for current batch chunks to complete
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
+    private CompletableFuture<Void> processChunkAsync(List<S3ObjectSummary> chunk) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                // Replace with actual processing logic
+                processChunk(chunk);
+                totalProcessed.addAndGet(chunk.size());
+                
+                if (totalProcessed.get() % 10000 == 0) {
+                    log.info("Progress: {} files processed", totalProcessed.get());
+                }
+            } catch (Exception e) {
+                log.error("Chunk processing failed", e);
+                // Implement retry logic or dead-letter queue here
+            }
+        }, processingExecutor);
+    }
+
+    private void processChunk(List<S3ObjectSummary> chunk) {
+        // Your actual chunk processing logic
+        // Consider implementing batch database operations or parallel processing within chunks
+    }
+
+    private boolean isProcessingComplete() {
+        return totalProcessed.get() >= maxFiles;
+    }
+
+    private boolean isTimeout(long startTime) {
+        return (System.currentTimeMillis() - startTime) > TimeUnit.MINUTES.toMillis(timeoutMinutes);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        try {
+            processingExecutor.shutdown();
+            if (!processingExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+                processingExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            processingExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+}
+
+
+
+
+
+
+
+
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
