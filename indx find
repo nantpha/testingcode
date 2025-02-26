@@ -1,0 +1,79 @@
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import java.util.List;
+
+public class S3ObjectFetcher {
+    private final S3Client s3Client;
+    private final String bucketName;
+
+    public S3ObjectFetcher(S3Client s3Client, String bucketName) {
+        this.s3Client = s3Client;
+        this.bucketName = bucketName;
+    }
+
+    public List<S3Object> getObjectsFromIndex(int startIndex, int count) {
+        try {
+            // Calculate how many objects to fetch per request (max 1000 per AWS limit)
+            int maxKeys = Math.min(count, 1000);
+            
+            ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .maxKeys(maxKeys)
+                .build();
+
+            List<S3Object> resultObjects = new ArrayList<>();
+            String continuationToken = null;
+            int currentIndex = 0;
+
+            // Paginate through objects until we reach our start index
+            do {
+                if (continuationToken != null) {
+                    request = request.toBuilder()
+                        .continuationToken(continuationToken)
+                        .build();
+                }
+
+                ListObjectsV2Response response = s3Client.listObjectsV2(request);
+                List<S3Object> objects = response.contents();
+
+                // If we've reached or passed our start index
+                if (currentIndex + objects.size() >= startIndex) {
+                    int skip = Math.max(0, startIndex - currentIndex);
+                    int remainingCount = count - resultObjects.size();
+                    
+                    // Add the objects we need from this batch
+                    for (int i = skip; i < objects.size() && resultObjects.size() < count; i++) {
+                        resultObjects.add(objects.get(i));
+                    }
+                }
+
+                currentIndex += objects.size();
+                continuationToken = response.nextContinuationToken();
+
+            } while (continuationToken != null && resultObjects.size() < count 
+                    && currentIndex < startIndex + count);
+
+            return resultObjects;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching objects from S3: " + e.getMessage(), e);
+        }
+    }
+
+    // Example usage
+    public static void main(String[] args) {
+        S3Client s3Client = S3Client.builder().build();
+        String bucketName = "your-bucket-name";
+        
+        S3ObjectFetcher fetcher = new S3ObjectFetcher(s3Client, bucketName);
+        List<S3Object> objects = fetcher.getObjectsFromIndex(20000, 5);
+        
+        // Process the retrieved objects
+        for (S3Object obj : objects) {
+            System.out.println("Key: " + obj.key());
+            // Here you could add code to get the actual object content using s3Client.getObject()
+        }
+    }
+}
