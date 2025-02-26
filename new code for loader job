@@ -1,3 +1,108 @@
+
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+
+@Service
+public class S3Processor {
+
+    private static final Logger log = LoggerFactory.getLogger(S3Processor.class);
+    private final AmazonS3 s3Client;
+    private final int chunkSize = 300; // From YAML
+    private final long maxProcessedFiles = 1_000_000; // From YAML
+    private final AtomicLong totalProcessed = new AtomicLong(0);
+    private final ExecutorService executor = Executors.newFixedThreadPool(8); // Adjust based on load
+
+    @Autowired
+    public S3Processor(AmazonS3 s3Client) {
+        this.s3Client = s3Client;
+    }
+
+    @Async
+    public CompletableFuture<Void> execute(String bucketName, String prefix) {
+        return fetchAndProcess(bucketName, prefix, null)
+            .thenAccept(total -> log.info("Processed {} files from {}/{}", total, bucketName, prefix));
+    }
+
+    private CompletableFuture<Long> fetchAndProcess(String bucketName, String prefix, String continuationToken) {
+        if (totalProcessed.get() >= maxProcessedFiles) {
+            return CompletableFuture.completedFuture(totalProcessed.get());
+        }
+
+        ListObjectsV2Request request = new ListObjectsV2Request()
+            .withBucketName(bucketName)
+            .withPrefix(prefix)
+            .withMaxKeys(1000)
+            .withContinuationToken(continuationToken);
+
+        // Async fetch
+        return CompletableFuture.supplyAsync(() -> s3Client.listObjectsV2(request), executor)
+            .thenCompose(result -> {
+                List<S3ObjectSummary> keys = result.getObjectSummaries();
+                if (keys.isEmpty()) {
+                    return CompletableFuture.completedFuture(totalProcessed.get());
+                }
+
+                // Process keys in chunks asynchronously
+                List<CompletableFuture<Long>> chunkFutures = new ArrayList<>();
+                List<S3ObjectSummary> chunk = new ArrayList<>();
+                for (S3ObjectSummary summary : keys) {
+                    chunk.add(summary);
+                    if (chunk.size() >= chunkSize) {
+                        chunkFutures.add(processChunkAsync(new ArrayList<>(chunk)));
+                        chunk.clear();
+                    }
+                }
+                if (!chunk.isEmpty()) {
+                    chunkFutures.add(processChunkAsync(chunk));
+                }
+
+                // Wait for all chunks to complete, then recurse
+                return CompletableFuture.allOf(chunkFutures.toArray(new CompletableFuture[0]))
+                    .thenCompose(v -> {
+                        long currentProcessed = chunkFutures.stream()
+                            .map(CompletableFuture::join)
+                            .mapToLong(Long::longValue)
+                            .sum();
+                        totalProcessed.addAndGet(currentProcessed);
+
+                        if (result.getNextContinuationToken() != null && totalProcessed.get() < maxProcessedFiles) {
+                            return fetchAndProcess(bucketName, prefix, result.getNextContinuationToken());
+                        }
+                        return CompletableFuture.completedFuture(totalProcessed.get());
+                    });
+            });
+    }
+
+    @Async
+    private CompletableFuture<Long> processChunkAsync(List<S3ObjectSummary> chunk) {
+        return CompletableFuture.supplyAsync(() -> {
+            // Your existing chunk processing logic
+            log.debug("Processed chunk of size {}", chunk.size());
+            return (long) chunk.size();
+        }, executor);
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        executor.shutdown();
+    }
+}
+
+
+
+
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
 import org.springframework.scheduling.annotation.Scheduled;
