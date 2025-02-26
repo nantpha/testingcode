@@ -1,3 +1,103 @@
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.*;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.concurrent.*;
+
+@Service
+public class S3FileProcessor {
+
+    private final AmazonS3 s3Client;
+    private final int fetcherThreadCount = 3;   // Configurable thread count for fetching
+    private final int processorThreadCount = 5; // Configurable thread count for processing
+    private final int chunkSize = 300;          // Configurable chunk size
+    private final int maxQueueSize = 3;         // Limit to prevent memory overflow
+
+    public S3FileProcessor(AmazonS3 s3Client) {
+        this.s3Client = s3Client;
+    }
+
+    @Scheduled(cron = "0 0 * * * ?") // Adjust cron as needed
+    public void processS3Files() {
+        ExecutorService fetcherPool = Executors.newFixedThreadPool(fetcherThreadCount);
+        ExecutorService processorPool = Executors.newFixedThreadPool(processorThreadCount);
+        BlockingQueue<List<S3ObjectSummary>> queue = new LinkedBlockingQueue<>(maxQueueSize);
+        int maxFilesToProcess = 1_000_000; // Configurable max records
+
+        fetcherPool.submit(() -> fetchFromS3("bucket-name", "prefix/", queue, maxFilesToProcess));
+        processQueue(queue, processorPool, maxFilesToProcess);
+
+        fetcherPool.shutdown();
+        processorPool.shutdown();
+    }
+
+    private void fetchFromS3(String bucketName, String prefix, BlockingQueue<List<S3ObjectSummary>> queue, int maxFilesToProcess) {
+        String continuationToken = null;
+        int totalFetched = 0;
+
+        do {
+            ListObjectsV2Request request = new ListObjectsV2Request()
+                    .withBucketName(bucketName)
+                    .withPrefix(prefix)
+                    .withContinuationToken(continuationToken)
+                    .withMaxKeys(1000);
+
+            ListObjectsV2Result result = s3Client.listObjectsV2(request);
+            List<S3ObjectSummary> objectSummaries = result.getObjectSummaries();
+            totalFetched += objectSummaries.size();
+
+            try {
+                queue.put(objectSummaries); // Blocks if full
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            continuationToken = result.getNextContinuationToken();
+        } while (continuationToken != null && totalFetched < maxFilesToProcess);
+    }
+
+    private void processQueue(BlockingQueue<List<S3ObjectSummary>> queue, ExecutorService processorPool, int maxFilesToProcess) {
+        int totalProcessed = 0;
+
+        while (totalProcessed < maxFilesToProcess) {
+            try {
+                List<S3ObjectSummary> batch = queue.poll(10, TimeUnit.SECONDS); // Wait for new data
+                if (batch == null) break;
+
+                List<List<S3ObjectSummary>> chunks = splitIntoChunks(batch, chunkSize);
+                for (List<S3ObjectSummary> chunk : chunks) {
+                    processorPool.submit(() -> processChunk(chunk));
+                }
+
+                totalProcessed += batch.size();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private List<List<S3ObjectSummary>> splitIntoChunks(List<S3ObjectSummary> list, int chunkSize) {
+        // Split list into chunks of 'chunkSize'
+    }
+
+    private void processChunk(List<S3ObjectSummary> chunk) {
+        // Your processing logic
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
