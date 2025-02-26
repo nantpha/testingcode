@@ -1,3 +1,159 @@
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import software.amazon.awssdk.core.async.SdkPublisher;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Publisher;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
+@Component
+public class S3BatchProcessor {
+
+    private final S3AsyncClient s3AsyncClient;
+    private final ExecutorService processingPool;
+    private final AtomicLong totalProcessed = new AtomicLong(0);
+
+    @Value("${aws.s3.bucket}")
+    private String bucketName;
+
+    @Value("${processing.chunkSize:300}")
+    private int chunkSize;
+
+    @Value("${processing.maxRecords:3000000}")
+    private long maxRecords;
+
+    @Value("${processing.timeLimitMinutes:60}")
+    private long timeLimitMinutes;
+
+    public S3BatchProcessor() {
+        this.s3AsyncClient = S3AsyncClient.builder()
+                .httpClientBuilder(b -> b.maxConcurrency(100)
+                .build();
+        
+        this.processingPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+    }
+
+    @Scheduled(cron = "${cron.job1}")
+    public void processJob1() {
+        processFolder("folder1-prefix/");
+    }
+
+    @Scheduled(cron = "${cron.job2}")
+    public void processJob2() {
+        processFolder("folder2-prefix/");
+    }
+
+    @Scheduled(cron = "${cron.job3}")
+    public void processJob3() {
+        processFolder("folder3-prefix/");
+    }
+
+    private void processFolder(String prefix) {
+        final Instant startTime = Instant.now();
+        final Instant timeoutTime = startTime.plus(Duration.ofMinutes(timeLimitMinutes));
+        
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .build();
+
+        ListObjectsV2Publisher publisher = s3AsyncClient.listObjectsV2Paginator(request);
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        publisher.subscribe(response -> {
+            if (timeoutReached(startTime) || processingComplete()) return;
+
+            List<CompletableFuture<Void>> chunkFutures = processResponse(response, startTime);
+            futures.addAll(chunkFutures);
+        });
+
+        // Wait for all processing to complete
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
+    private List<CompletableFuture<Void>> processResponse(ListObjectsV2Response response, Instant startTime) {
+        List<String> keys = response.contents().stream()
+                .map(s3Object -> s3Object.key())
+                .collect(Collectors.toList());
+
+        return partitionAndProcess(keys, startTime);
+    }
+
+    private List<CompletableFuture<Void>> partitionAndProcess(List<String> keys, Instant startTime) {
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        List<List<String>> chunks = partition(keys, chunkSize);
+
+        for (List<String> chunk : chunks) {
+            if (processingComplete() || timeoutReached(startTime)) break;
+
+            futures.add(CompletableFuture.runAsync(() -> processChunk(chunk), processingPool));
+        }
+        return futures;
+    }
+
+    private void processChunk(List<String> chunk) {
+        try {
+            // Your actual processing logic here
+            // Example: database operations, file processing, etc.
+            
+            // Simulate processing
+            Thread.sleep(10); 
+            
+            long processed = totalProcessed.addAndGet(chunk.size());
+            if (processed % 10000 == 0) {
+                System.out.println("Processed: " + processed + " records");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private boolean processingComplete() {
+        return totalProcessed.get() >= maxRecords;
+    }
+
+    private boolean timeoutReached(Instant startTime) {
+        return Duration.between(startTime, Instant.now()).toMinutes() >= timeLimitMinutes;
+    }
+
+    private static <T> List<List<T>> partition(List<T> list, int size) {
+        List<List<T>> partitions = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            partitions.add(list.subList(i, Math.min(i + size, list.size())));
+        }
+        return partitions;
+    }
+
+    // Graceful shutdown
+    @PreDestroy
+    public void cleanup() {
+        processingPool.shutdown();
+        s3AsyncClient.close();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 @Service
 public class S3Processor {
 
