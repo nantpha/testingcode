@@ -1,0 +1,229 @@
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import software.amazon.awssdk.core.async.SdkPublisher;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.*;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+class S3AsyncObjectFetcherTest {
+    private S3AsyncClient s3Client;
+    private S3AsyncObjectFetcher fetcher;
+    private final String bucketName = "test-bucket";
+
+    @BeforeEach
+    void setUp() {
+        s3Client = mock(S3AsyncClient.class);
+        fetcher = new S3AsyncObjectFetcher(s3Client, bucketName);
+    }
+
+    @Test
+    void testGetObjectsFromIndex_Success() throws ExecutionException, InterruptedException {
+        // Mock S3 response
+        S3Object obj1 = S3Object.builder().key("file1.txt").build();
+        S3Object obj2 = S3Object.builder().key("file2.txt").build();
+        ListObjectsV2Response response = ListObjectsV2Response.builder()
+                .contents(obj1, obj2)
+                .build();
+        
+        CompletableFuture<ListObjectsV2Response> futureResponse = CompletableFuture.completedFuture(response);
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(futureResponse);
+        
+        // Call method
+        CompletableFuture<List<S3Object>> resultFuture = fetcher.getObjectsFromIndex(0, 2);
+        List<S3Object> result = resultFuture.get();
+
+        // Assertions
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("file1.txt", result.get(0).key());
+        assertEquals("file2.txt", result.get(1).key());
+
+        // Verify interactions
+        verify(s3Client, times(1)).listObjectsV2(any(ListObjectsV2Request.class));
+    }
+
+    @Test
+    void testGetObjectsFromIndex_ExceptionHandling() {
+        // Mock S3 error response
+        CompletableFuture<ListObjectsV2Response> futureResponse = new CompletableFuture<>();
+        futureResponse.completeExceptionally(new RuntimeException("S3 error"));
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(futureResponse);
+
+        // Call method
+        CompletableFuture<List<S3Object>> resultFuture = fetcher.getObjectsFromIndex(0, 2);
+
+        // Assertions
+        ExecutionException exception = assertThrows(ExecutionException.class, resultFuture::get);
+        assertTrue(exception.getCause().getMessage().contains("S3 error"));
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+public class S3AsyncObjectFetcherTest {
+    private S3AsyncClient mockS3Client;
+    private S3AsyncObjectFetcher fetcher;
+    private final String BUCKET_NAME = "test-bucket";
+
+    @BeforeEach
+    void setUp() {
+        mockS3Client = mock(S3AsyncClient.class);
+        fetcher = new S3AsyncObjectFetcher(mockS3Client, BUCKET_NAME);
+    }
+
+    @Test
+    void testGetObjectsFromIndexSinglePage() throws ExecutionException, InterruptedException {
+        // Setup mock response
+        List<S3Object> mockObjects = Arrays.asList(
+            S3Object.builder().key("file1.txt").build(),
+            S3Object.builder().key("file2.txt").build(),
+            S3Object.builder().key("file3.txt").build()
+        );
+        
+        ListObjectsV2Response response = ListObjectsV2Response.builder()
+            .contents(mockObjects)
+            .nextContinuationToken(null)
+            .build();
+
+        when(mockS3Client.listObjectsV2(any(ListObjectsV2Request.class)))
+            .thenReturn(CompletableFuture.completedFuture(response));
+
+        // Test fetching 2 objects from index 1
+        CompletableFuture<List<S3Object>> future = fetcher.getObjectsFromIndex(1, 2);
+        List<S3Object> result = future.get();
+
+        assertEquals(2, result.size());
+        assertEquals("file2.txt", result.get(0).key());
+        assertEquals("file3.txt", result.get(1).key());
+        verify(mockS3Client, times(1)).listObjectsV2(any());
+    }
+
+    @Test
+    void testGetObjectsFromIndexMultiplePages() throws ExecutionException, InterruptedException {
+        // Setup mock responses for two pages
+        List<S3Object> page1 = Arrays.asList(
+            S3Object.builder().key("file1.txt").build(),
+            S3Object.builder().key("file2.txt").build()
+        );
+        List<S3Object> page2 = Arrays.asList(
+            S3Object.builder().key("file3.txt").build(),
+            S3Object.builder().key("file4.txt").build()
+        );
+
+        ListObjectsV2Response response1 = ListObjectsV2Response.builder()
+            .contents(page1)
+            .nextContinuationToken("token1")
+            .build();
+        
+        ListObjectsV2Response response2 = ListObjectsV2Response.builder()
+            .contents(page2)
+            .nextContinuationToken(null)
+            .build();
+
+        when(mockS3Client.listObjectsV2(any(ListObjectsV2Request.class)))
+            .thenReturn(CompletableFuture.completedFuture(response1))
+            .thenReturn(CompletableFuture.completedFuture(response2));
+
+        // Test fetching 3 objects from index 1
+        CompletableFuture<List<S3Object>> future = fetcher.getObjectsFromIndex(1, 3);
+        List<S3Object> result = future.get();
+
+        assertEquals(3, result.size());
+        assertEquals("file2.txt", result.get(0).key());
+        assertEquals("file3.txt", result.get(1).key());
+        assertEquals("file4.txt", result.get(2).key());
+        verify(mockS3Client, times(2)).listObjectsV2(any());
+    }
+
+    @Test
+    void testGetObjectsFromIndexWithException() {
+        // Setup mock to throw exception
+        RuntimeException testException = new RuntimeException("S3 Error");
+        when(mockS3Client.listObjectsV2(any(ListObjectsV2Request.class)))
+            .thenReturn(CompletableFuture.failedFuture(testException));
+
+        // Test error handling
+        CompletableFuture<List<S3Object>> future = fetcher.getObjectsFromIndex(0, 5);
+        
+        ExecutionException thrown = assertThrows(ExecutionException.class, future::get);
+        assertEquals(testException, thrown.getCause());
+        verify(mockS3Client, times(1)).listObjectsV2(any());
+    }
+
+    @Test
+    void testGetObjectsFromIndexEmptyResult() throws ExecutionException, InterruptedException {
+        // Setup mock response with empty result
+        ListObjectsV2Response response = ListObjectsV2Response.builder()
+            .contents(Arrays.asList())
+            .nextContinuationToken(null)
+            .build();
+
+        when(mockS3Client.listObjectsV2(any(ListObjectsV2Request.class)))
+            .thenReturn(CompletableFuture.completedFuture(response));
+
+        // Test fetching from index beyond available objects
+        CompletableFuture<List<S3Object>> future = fetcher.getObjectsFromIndex(10, 5);
+        List<S3Object> result = future.get();
+
+        assertTrue(result.isEmpty());
+        verify(mockS3Client, times(1)).listObjectsV2(any());
+    }
+}
