@@ -1,0 +1,86 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>alert-publisher</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  
+  <dependencies>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sns</artifactId>
+      <version>2.20.18</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <source>11</source>
+          <target>11</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+
+
+
+package com.example;
+
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
+
+public class AlertPublisher {
+    private static final String CRITICAL_TOPIC_ARN = "arn:aws:sns:us-east-1:123456789012:critical-alerts"; // Replace with Terraform output
+    private static final String WARNING_TOPIC_ARN = "arn:aws:sns:us-east-1:123456789012:warning-alerts";  // Replace with Terraform output
+    private static final String INFO_TOPIC_ARN = "arn:aws:sns:us-east-1:123456789012:info-alerts";      // Replace with Terraform output
+
+    private final SnsClient snsClient;
+
+    public AlertPublisher() {
+        this.snsClient = SnsClient.create();
+    }
+
+    public void publishAlert(String alertType, String message) {
+        String topicArn;
+        switch (alertType.toLowerCase()) {
+            case "critical":
+                topicArn = CRITICAL_TOPIC_ARN;
+                break;
+            case "warning":
+                topicArn = WARNING_TOPIC_ARN;
+                break;
+            case "info":
+                topicArn = INFO_TOPIC_ARN;
+                break;
+            default:
+                System.out.println("Unknown alert type: " + alertType);
+                return;
+        }
+
+        PublishRequest request = PublishRequest.builder()
+                .topicArn(topicArn)
+                .message(message)
+                .build();
+
+        snsClient.publish(request);
+        System.out.println("Published alert: " + message + " to " + topicArn);
+    }
+
+    public static void main(String[] args) {
+        AlertPublisher publisher = new AlertPublisher();
+        // Simulate alerts
+        publisher.publishAlert("critical", "Instance XYZ has failed!");
+        publisher.publishAlert("warning", "High CPU usage detected!");
+        publisher.publishAlert("info", "System running normally.");
+    }
+}
+
+
+
+
