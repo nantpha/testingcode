@@ -1,0 +1,74 @@
+# Terraform provider configuration
+provider "aws" {
+  region = "us-east-1" # Replace with your desired region
+}
+
+# Create an SNS topic for quota breach notifications
+resource "aws_sns_topic" "quota_breach_topic" {
+  name = "quota-breach-notifications"
+}
+
+# Create an SQS queue to receive SNS messages
+resource "aws_sqs_queue" "quota_breach_queue" {
+  name = "quota-breach-queue"
+}
+
+# Subscribe the SQS queue to the SNS topic
+resource "aws_sns_topic_subscription" "sqs_subscription" {
+  topic_arn = aws_sns_topic.quota_breach_topic.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.quota_breach_queue.arn
+}
+
+# SQS policy to allow SNS to send messages
+resource "aws_sqs_queue_policy" "quota_breach_queue_policy" {
+  queue_url = aws_sqs_queue.quota_breach_queue.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.quota_breach_queue.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_sns_topic.quota_breach_topic.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+# Create a CloudWatch metric alarm for quota breaches
+resource "aws_cloudwatch_metric_alarm" "quota_breach_alarm" {
+  alarm_name          = "QuotaBreachAlarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "ServiceQuotaUtilization"
+  namespace           = "AWS/Usage"
+  period              = "300" # 5 minutes
+  statistic           = "Average"
+  threshold           = "80"  # Trigger at 80% quota usage
+  alarm_description   = "Triggers when a service quota usage exceeds 80%."
+  treat_missing_data  = "missing"
+
+  dimensions = {
+    ServiceCode = "ec2"        # Example: EC2 service
+    QuotaCode   = "L-1216C47A" # Example: vCPUs quota
+  }
+
+  alarm_actions = [aws_sns_topic.quota_breach_topic.arn]
+  ok_actions    = [aws_sns_topic.quota_breach_topic.arn]
+}
+
+# Output values
+output "sns_topic_arn" {
+  value = aws_sns_topic.quota_breach_topic.arn
+}
+
+output "sqs_queue_url" {
+  value = aws_sqs_queue.quota_breach_queue.id
+}
