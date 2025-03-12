@@ -1,0 +1,127 @@
+provider "aws" {
+  region = "us-east-1" # Adjust to your region
+}
+
+# SNS Topics
+resource "aws_sns_topic" "critical_alerts" {
+  name = "critical-alerts"
+}
+
+resource "aws_sns_topic" "warning_alerts" {
+  name = "warning-alerts"
+}
+
+resource "aws_sns_topic" "info_alerts" {
+  name = "info-alerts"
+}
+
+# IAM Role for Lambda
+resource "aws_iam_role" "lambda_exec_role" {
+  name = "lambda-exec-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_policy" {
+  name = "lambda-policy"
+  role = aws_iam_role.lambda_exec_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:RebootInstances",
+          "autoscaling:UpdateAutoScalingGroup",
+          "autoscaling:DescribeAutoScalingGroups"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Lambda Function
+resource "aws_lambda_function" "alert_processor" {
+  function_name = "AlertProcessor"
+  handler       = "com.example.AlertProcessor::handleRequest"
+  runtime       = "java11"
+  role          = aws_iam_role.lambda_exec_role.arn
+  filename      = "target/alert-processor.jar" # Path to your compiled JAR
+  memory_size   = 512
+  timeout       = 60
+}
+
+# SNS Subscriptions to Lambda
+resource "aws_sns_topic_subscription" "critical_subscription" {
+  topic_arn = aws_sns_topic.critical_alerts.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.alert_processor.arn
+}
+
+resource "aws_sns_topic_subscription" "warning_subscription" {
+  topic_arn = aws_sns_topic.warning_alerts.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.alert_processor.arn
+}
+
+resource "aws_sns_topic_subscription" "info_subscription" {
+  topic_arn = aws_sns_topic.info_alerts.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.alert_processor.arn
+}
+
+# Lambda Permission to Allow SNS Invocation
+resource "aws_lambda_permission" "sns_invoke" {
+  statement_id  = "AllowExecutionFromSNS"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.alert_processor.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.critical_alerts.arn
+}
+
+resource "aws_lambda_permission" "sns_invoke_warning" {
+  statement_id  = "AllowExecutionFromSNSWarning"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.alert_processor.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.warning_alerts.arn
+}
+
+resource "aws_lambda_permission" "sns_invoke_info" {
+  statement_id  = "AllowExecutionFromSNSInfo"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.alert_processor.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.info_alerts.arn
+}
+
+# Outputs
+output "critical_topic_arn" {
+  value = aws_sns_topic.critical_alerts.arn
+}
+
+output "warning_topic_arn" {
+  value = aws_sns_topic.warning_alerts.arn
+}
+
+output "info_topic_arn" {
+  value = aws_sns_topic.info_alerts.arn
+}
