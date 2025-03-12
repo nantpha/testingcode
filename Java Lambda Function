@@ -1,0 +1,133 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>alert-processor</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  
+  <dependencies>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-core</artifactId>
+      <version>1.2.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-events</artifactId>
+      <version>3.11.0</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>ec2</artifactId>
+      <version>2.20.18</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>autoscaling</artifactId>
+      <version>2.20.18</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.2.4</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <source>11</source>
+          <target>11</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+
+
+
+package com.example;
+
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.SNSEvent;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.RebootInstancesRequest;
+import software.amazon.awssdk.services.autoscaling.AutoScalingClient;
+import software.amazon.awssdk.services.autoscaling.model.DescribeAutoScalingGroupsRequest;
+import software.amazon.awssdk.services.autoscaling.model.UpdateAutoScalingGroupRequest;
+
+public class AlertProcessor implements RequestHandler<SNSEvent, String> {
+    private final Ec2Client ec2Client = Ec2Client.create();
+    private final AutoScalingClient autoScalingClient = AutoScalingClient.create();
+    private static final String AUTO_SCALING_GROUP_NAME = "my-auto-scaling-group"; // Replace with your ASG name
+
+    @Override
+    public String handleRequest(SNSEvent event, Context context) {
+        String message = event.getRecords().get(0).getSNS().getMessage();
+        String topicArn = event.getRecords().get(0).getSNS().getTopicArn();
+
+        if (topicArn.contains("critical-alerts")) {
+            String instanceId = extractInstanceId(message); // Custom logic to extract instance ID
+            if (instanceId != null) {
+                RebootInstancesRequest request = RebootInstancesRequest.builder()
+                        .instanceIds(instanceId)
+                        .build();
+                ec2Client.rebootInstances(request);
+                context.getLogger().log("Restarted instance: " + instanceId);
+            }
+        } else if (topicArn.contains("warning-alerts")) {
+            int currentCapacity = autoScalingClient.describeAutoScalingGroups(
+                    DescribeAutoScalingGroupsRequest.builder()
+                            .autoScalingGroupNames(AUTO_SCALING_GROUP_NAME)
+                            .build()
+            ).autoScalingGroups().get(0).desiredCapacity();
+
+            UpdateAutoScalingGroupRequest request = UpdateAutoScalingGroupRequest.builder()
+                    .autoScalingGroupName(AUTO_SCALING_GROUP_NAME)
+                    .desiredCapacity(currentCapacity + 1)
+                    .build();
+            autoScalingClient.updateAutoScalingGroup(request);
+            context.getLogger().log("Scaled resources for ASG: " + AUTO_SCALING_GROUP_NAME);
+        } else if (topicArn.contains("info-alerts")) {
+            context.getLogger().log("Info alert received: " + message);
+        }
+
+        return "Alert processed successfully";
+    }
+
+    private String extractInstanceId(String message) {
+        // Example logic: Extract instance ID from message like "Instance XYZ has failed!"
+        if (message.contains("Instance")) {
+            String[] parts = message.split(" ");
+            return parts[1]; // e.g., "XYZ"
+        }
+        return null;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
