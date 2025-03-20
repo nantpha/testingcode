@@ -1,0 +1,97 @@
+import org.apache.poi.ss.usermodel.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.*;
+
+public class ExcelComparator {
+
+    public static void main(String[] args) throws IOException {
+        String file1Path = "file1.xlsx";
+        String file2Path = "file2.xlsx";
+
+        compareExcelFiles(file1Path, file2Path);
+    }
+
+    public static void compareExcelFiles(String file1Path, String file2Path) throws IOException {
+        try (
+            FileInputStream fis1 = new FileInputStream(new File(file1Path));
+            FileInputStream fis2 = new FileInputStream(new File(file2Path));
+            Workbook wb1 = WorkbookFactory.create(fis1);
+            Workbook wb2 = WorkbookFactory.create(fis2)
+        ) {
+            Sheet sheet1 = wb1.getSheetAt(0);
+            Sheet sheet2 = wb2.getSheetAt(0);
+
+            // Read column names from the first row
+            Map<String, Integer> columnMap1 = getColumnIndexMap(sheet1);
+            Map<String, Integer> columnMap2 = getColumnIndexMap(sheet2);
+
+            // Ensure both sheets have the same columns
+            if (!columnMap1.keySet().equals(columnMap2.keySet())) {
+                System.out.println("Column mismatch between the files.");
+                System.out.println("File1 Columns: " + columnMap1.keySet());
+                System.out.println("File2 Columns: " + columnMap2.keySet());
+                return;
+            }
+
+            Iterator<Row> rowIterator1 = sheet1.iterator();
+            Iterator<Row> rowIterator2 = sheet2.iterator();
+
+            // Skip header row
+            rowIterator1.next();
+            rowIterator2.next();
+
+            int rowNum = 2; // Data starts from row 2
+            while (rowIterator1.hasNext() && rowIterator2.hasNext()) {
+                Row row1 = rowIterator1.next();
+                Row row2 = rowIterator2.next();
+
+                compareRows(row1, row2, columnMap1, rowNum);
+                rowNum++;
+            }
+
+            if (rowIterator1.hasNext()) {
+                System.out.println("Extra rows found in first file starting from row " + rowNum);
+            } else if (rowIterator2.hasNext()) {
+                System.out.println("Extra rows found in second file starting from row " + rowNum);
+            }
+        }
+    }
+
+    private static Map<String, Integer> getColumnIndexMap(Sheet sheet) {
+        Map<String, Integer> columnMap = new HashMap<>();
+        Row headerRow = sheet.getRow(0);
+        if (headerRow != null) {
+            for (Cell cell : headerRow) {
+                columnMap.put(cell.getStringCellValue(), cell.getColumnIndex());
+            }
+        }
+        return columnMap;
+    }
+
+    private static void compareRows(Row row1, Row row2, Map<String, Integer> columnMap, int rowNum) {
+        for (String columnName : columnMap.keySet()) {
+            int colIndex = columnMap.get(columnName);
+            String value1 = getCellValue(row1.getCell(colIndex));
+            String value2 = getCellValue(row2.getCell(colIndex));
+
+            if (!value1.equals(value2)) {
+                System.out.println("Mismatch at Row " + rowNum + ", Column '" + columnName + "' -> " +
+                        "File1: " + value1 + ", File2: " + value2);
+            }
+        }
+    }
+
+    private static String getCellValue(Cell cell) {
+        if (cell == null) return "";
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> cell.getCellFormula();
+            default -> "";
+        };
+    }
+}
