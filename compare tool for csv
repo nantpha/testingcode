@@ -1,3 +1,74 @@
+
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
+
+public class CSVComparator {
+
+    public static void main(String[] args) throws IOException, CsvValidationException {
+        String file1Path = "file1.csv";
+        String file2Path = "file2.csv";
+
+        compareCSVFiles(file1Path, file2Path);
+    }
+
+    public static void compareCSVFiles(String file1Path, String file2Path) throws IOException, CsvValidationException {
+        List<Map<String, String>> data1 = readCSV(file1Path);
+        List<Map<String, String>> data2 = readCSV(file2Path);
+
+        if (data1.isEmpty() || data2.isEmpty()) {
+            System.out.println("One or both files are empty.");
+            return;
+        }
+
+        Set<Map<String, String>> set1 = new HashSet<>(data1);
+        Set<Map<String, String>> set2 = new HashSet<>(data2);
+
+        // Find missing rows in File2 (present in File1 but not in File2)
+        Set<Map<String, String>> missingInFile2 = new HashSet<>(set1);
+        missingInFile2.removeAll(set2);
+
+        // Find extra rows in File2 (present in File2 but not in File1)
+        Set<Map<String, String>> extraInFile2 = new HashSet<>(set2);
+        extraInFile2.removeAll(set1);
+
+        if (missingInFile2.isEmpty() && extraInFile2.isEmpty()) {
+            System.out.println("File2 contains all the necessary records from File1.");
+        } else {
+            if (!missingInFile2.isEmpty()) {
+                System.out.println("Rows missing in File2 (present in File1 but not in File2):");
+                missingInFile2.forEach(System.out::println);
+            }
+            if (!extraInFile2.isEmpty()) {
+                System.out.println("Extra rows in File2 (not present in File1):");
+                extraInFile2.forEach(System.out::println);
+            }
+        }
+    }
+
+    private static List<Map<String, String>> readCSV(String filePath) throws IOException, CsvValidationException {
+        List<Map<String, String>> data = new ArrayList<>();
+
+        try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
+            String[] headers = reader.readNext();
+            if (headers == null) return data;
+
+            String[] row;
+            while ((row = reader.readNext()) != null) {
+                Map<String, String> rowData = new LinkedHashMap<>();
+                for (int i = 0; i < headers.length; i++) {
+                    rowData.put(headers[i], row[i]);
+                }
+                data.add(rowData);
+            }
+        }
+        return data;
+    }
+}
+
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 
