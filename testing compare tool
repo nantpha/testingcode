@@ -1,3 +1,106 @@
+
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class CompareCSVAndLog {
+    public static void main(String[] args) {
+        String csvFilePath = "data.csv"; // Path to CSV file
+        String logFilePath = "application.log"; // Path to log file
+
+        try {
+            // Read IDs from CSV
+            Set<String> csvIds = readCSVIds(csvFilePath);
+
+            // Extract IDs from Log file
+            Set<String> logIds = extractLogIds(logFilePath);
+
+            // Print Total Log Entries Found
+            System.out.println("\n🔹 Total log entries found: " + logIds.size());
+
+            // Find Missing IDs
+            Set<String> missingIds = new HashSet<>(csvIds);
+            missingIds.removeAll(logIds); // Remove IDs that are present in logs
+
+            // Print Missing IDs
+            if (missingIds.isEmpty()) {
+                System.out.println("✅ All IDs from CSV are present in the log.\n");
+            } else {
+                System.out.println("\n🚨 Missing IDs in log file:");
+                missingIds.forEach(System.out::println);
+            }
+
+        } catch (IOException | CsvValidationException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Function to read 'id' values from CSV (Handles Encoding Issues)
+    private static Set<String> readCSVIds(String csvFilePath) throws IOException, CsvValidationException {
+        Set<String> idSet = new HashSet<>();
+        try (CSVReader reader = new CSVReader(new InputStreamReader(
+                new FileInputStream(csvFilePath), StandardCharsets.UTF_8))) {
+            String[] nextLine;
+            boolean isHeader = true;
+
+            while ((nextLine = reader.readNext()) != null) {
+                if (isHeader) {
+                    isHeader = false; // Skip header
+                    continue;
+                }
+                if (nextLine.length > 0) {
+                    idSet.add(nextLine[0].trim()); // First column is 'id'
+                }
+            }
+        }
+        return idSet;
+    }
+
+    // Function to extract 'id' values from log file (Handles Encoding Issues & Garbled Data)
+    private static Set<String> extractLogIds(String logFilePath) throws IOException {
+        Set<String> idSet = new HashSet<>();
+
+        // ✅ Improved Regex: Matches numeric, alphanumeric, and special characters (_ and -)
+        Pattern pattern = Pattern.compile("\"id\"\\s*:\\s*\"?([a-zA-Z0-9-_]+)\"?");
+
+        // 🔹 Try reading the file with UTF-8 first, fallback to ISO-8859-1 if necessary
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                new FileInputStream(logFilePath), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                Matcher matcher = pattern.matcher(line);
+                if (matcher.find()) {
+                    idSet.add(matcher.group(1)); // Extract ID
+                }
+            }
+        } catch (MalformedInputException e) {
+            System.err.println("⚠️ Encoding issue detected, retrying with ISO-8859-1...");
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                    new FileInputStream(logFilePath), StandardCharsets.ISO_8859_1))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        idSet.add(matcher.group(1)); // Extract ID
+                    }
+                }
+            }
+        }
+
+        return idSet;
+    }
+}
+
+
+
+-------------
+
+
+
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 import java.io.*;
