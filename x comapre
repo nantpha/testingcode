@@ -1,0 +1,66 @@
+import java.io.*;
+import java.util.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+public class FileComparator {
+    public static void main(String[] args) {
+        // File paths - modify these according to your needs
+        String csvFilePath = "data.csv";
+        String logFilePath = "log.json";
+        
+        try {
+            // Read CSV IDs into a Set
+            Set<String> csvIds = readCsvIds(csvFilePath);
+            
+            // Read log file and compare IDs
+            compareWithLog(csvIds, logFilePath);
+            
+        } catch (IOException e) {
+            System.err.println("Error processing files: " + e.getMessage());
+        }
+    }
+    
+    private static Set<String> readCsvIds(String csvFilePath) throws IOException {
+        Set<String> ids = new HashSet<>();
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
+            String line;
+            // Skip header if exists
+            boolean firstLine = true;
+            
+            while ((line = br.readLine()) != null) {
+                if (firstLine) {
+                    firstLine = false;
+                    continue;
+                }
+                // Assuming ID is in the first column
+                String[] columns = line.split(",");
+                if (columns.length > 0) {
+                    ids.add(columns[0].trim());
+                }
+            }
+        }
+        return ids;
+    }
+    
+    private static void compareWithLog(Set<String> csvIds, String logFilePath) throws IOException {
+        try (BufferedReader br = new BufferedReader(new FileReader(logFilePath))) {
+            String line;
+            JsonParser jsonParser = new JsonParser();
+            
+            while ((line = br.readLine()) != null) {
+                try {
+                    JsonObject jsonObject = jsonParser.parse(line).getAsJsonObject();
+                    String id = jsonObject.get("id").getAsString();
+                    
+                    if (!csvIds.contains(id)) {
+                        System.out.println("ID not found in CSV: " + id);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error parsing JSON line: " + line);
+                }
+            }
+        }
+    }
+}
