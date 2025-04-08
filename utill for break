@@ -1,0 +1,203 @@
+import java.util.Arrays;
+import java.util.List;
+
+public class StringUtils {
+
+    /**
+     * Splits a string like 'abc/123/456/789/11222.ext' into four parts:
+     * 1. First part before the first '/'
+     * 2. Filename (last segment before the last dot, if present)
+     * 3. Extension (after the last dot, if present)
+     * 4. Middle path between first and last parts (no trailing '/')
+     *
+     * @param input the path string to split (e.g., "abc/123/file.txt")
+     * @return a List of 4 strings: [first, filename, extension, middlePath]
+     *         - Returns ["", "", "", ""] for null or empty input
+     *         - Returns [input, "", "", ""] for input with no slashes
+     *         - Empty segments from consecutive slashes are ignored in middle path
+     */
+    public static List<String> splitPath(String input) {
+        // Handle null or empty input
+        if (input == null || input.trim().isEmpty()) {
+            return Arrays.asList("", "", "", "");
+        }
+
+        // Split by '/' and filter out empty segments from consecutive slashes
+        String[] parts = input.split("/+"); // Use regex "/+" to collapse multiple slashes
+        if (parts.length < 2) {
+            String first = parts.length > 0 && !parts[0].isEmpty() ? parts[0] : "";
+            return Arrays.asList(first, "", "", "");
+        }
+
+        // Extract components
+        String first = parts[0];
+        String lastSegment = parts[parts.length - 1];
+
+        // Split last segment into filename and extension
+        String filename = lastSegment;
+        String extension = "";
+        int dotIndex = lastSegment.lastIndexOf('.');
+        if (dotIndex > 0) { // Ensure dot isn't at start (e.g., ".hidden")
+            filename = lastSegment.substring(0, dotIndex);
+            extension = lastSegment.substring(dotIndex + 1);
+        }
+
+        // Build middle path without trailing slash
+        StringBuilder middlePath = new StringBuilder();
+        for (int i = 1; i < parts.length - 1; i++) {
+            if (!parts[i].isEmpty()) { // Skip empty segments
+                if (middlePath.length() > 0) {
+                    middlePath.append("/");
+                }
+                middlePath.append(parts[i]);
+            }
+        }
+
+        return Arrays.asList(first, filename, extension, middlePath.toString());
+    }
+
+    // Test method
+    public static void main(String[] args) {
+        String[] testCases = {
+            "abc/123/456/789/11222.ext",  // Normal case
+            "root/file.txt",              // Simple path
+            "single",                     // No slashes
+            "abc/",                       // Trailing slash
+            "abc//def/ghi.",             // Consecutive slashes
+            "",                          // Empty
+            null,                        // Null
+            "file.txt",                  // No slashes with dot
+            "dir/subdir/.hidden",        // Hidden file
+            "abc/def/../file.txt",       // Path with dots (not resolved)
+            "a/b/c/file.tar.gz"          // Multiple dots
+        };
+
+        for (String test : testCases) {
+            System.out.println("Input: " + test);
+            System.out.println("Output: " + splitPath(test));
+            System.out.println();
+        }
+    }
+}
+
+
+
+
+import java.util.Arrays;
+import java.util.List;
+
+public class StringUtils {
+
+    /**
+     * Splits a string like 'abc/123/456/789/11222.ext' into:
+     * 1. First part before first '/'
+     * 2. Last file name before dot
+     * 3. File extension
+     * 4. Path between first and last parts
+     */
+    public static List<String> splitPath(String input) {
+        if (input == null || input.isEmpty()) {
+            return Arrays.asList("", "", "", "");
+        }
+
+        String[] parts = input.split("/");
+
+        if (parts.length < 2) {
+            return Arrays.asList(parts[0], "", "", "");
+        }
+
+        String first = parts[0];
+        String lastSegment = parts[parts.length - 1];
+
+        // Get middle (before dot) and extension (after dot)
+        String middle;
+        String extension;
+        if (lastSegment.contains(".")) {
+            int dotIndex = lastSegment.lastIndexOf('.');
+            middle = lastSegment.substring(0, dotIndex);
+            extension = lastSegment.substring(dotIndex + 1);
+        } else {
+            middle = lastSegment;
+            extension = "";
+        }
+
+        // Join intermediate path segments
+        StringBuilder middlePath = new StringBuilder();
+        for (int i = 1; i < parts.length - 1; i++) {
+            middlePath.append(parts[i]).append("/");
+        }
+
+        return Arrays.asList(first, middle, extension, middlePath.toString());
+    }
+}
+
+
+
+
+import java.util.Arrays;
+import java.util.List;
+
+public class StringUtils {
+
+    /**
+     * Extracts:
+     * 1. First part before first '/'
+     * 2. Last part before last '.' after last '/'
+     * 3. Last extension after last '.'
+     */
+    public static List<String> getFirstMiddleLast(String input) {
+        if (input == null || input.isEmpty()) {
+            return Arrays.asList("", "", "");
+        }
+
+        String[] slashParts = input.split("/");
+        String first = slashParts[0];
+        String lastSegment = slashParts[slashParts.length - 1];
+
+        String middle;
+        String last;
+
+        if (lastSegment.contains(".")) {
+            int dotIndex = lastSegment.lastIndexOf('.');
+            middle = lastSegment.substring(0, dotIndex);
+            last = lastSegment.substring(dotIndex + 1);
+        } else {
+            middle = lastSegment;
+            last = "";
+        }
+
+        return Arrays.asList(first, middle, last);
+    }
+}
+
+
+
+
+
+import java.util.Arrays;
+import java.util.List;
+
+public class StringUtils {
+
+    /**
+     * Extracts the first and last segments of a string based on '/' delimiter.
+     *
+     * @param input The input string (e.g. "abc/123/456")
+     * @return A List containing [first, last] parts
+     */
+    public static List<String> getFirstAndLastParts(String input) {
+        if (input == null || input.isEmpty()) {
+            return Arrays.asList("", "");
+        }
+
+        String[] parts = input.split("/");
+
+        if (parts.length == 0) {
+            return Arrays.asList("", "");
+        } else if (parts.length == 1) {
+            return Arrays.asList(parts[0], parts[0]);
+        } else {
+            return Arrays.asList(parts[0], parts[parts.length - 1]);
+        }
+    }
+}
