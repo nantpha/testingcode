@@ -1,4 +1,55 @@
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jms.config.JmsListenerEndpointRegistry;
+import org.springframework.jms.config.SimpleJmsListenerEndpoint;
+import org.springframework.jms.listener.MessageListenerContainer;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.TextMessage;
 
+@Configuration
+public class DynamicJmsListenerRegistrar {
+
+    @Autowired
+    private JmsListenerEndpointRegistry registry;
+
+    @Autowired
+    private CommonMessageHandler handler;
+
+    @Autowired
+    private org.springframework.jms.config.JmsListenerContainerFactory<?> nnn;
+
+    @Autowired
+    private org.springframework.jms.config.JmsListenerContainerFactory<?> vv;
+
+    @PostConstruct
+    public void registerDynamicListeners() {
+        register("abc", "nnn");
+        register("abc-1", "vv");
+        register("abc-2", "nnn");
+        register("abc-3", "vv");
+    }
+
+    private void register(String destination, String factoryKey) {
+        SimpleJmsListenerEndpoint endpoint = new SimpleJmsListenerEndpoint();
+        endpoint.setId("dynamic-" + destination);
+        endpoint.setDestination(destination);
+        endpoint.setMessageListener((MessageListener) message -> {
+            if (message instanceof TextMessage) {
+                try {
+                    String payload = ((TextMessage) message).getText();
+                    handler.handleMessage(payload, destination);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        var factory = "nnn".equals(factoryKey) ? nnn : vv;
+        MessageListenerContainer container = factory.createListenerContainer(endpoint);
+        registry.registerListenerContainer(endpoint, factory, true);
+    }
+}
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
