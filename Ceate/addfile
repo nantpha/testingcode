@@ -1,0 +1,93 @@
+// Request Model
+record Request(String fileName, String name, String status) {}
+
+// Thread-safe queue
+BlockingQueue<Request> queue = new LinkedBlockingQueue<>();
+
+// In-memory cache to track existing files if desired
+ConcurrentMap<String, Boolean> fileExistenceCache = new ConcurrentHashMap<>();
+
+// Producer (called from controller or listener)
+public void receiveRequest(Request request) {
+    queue.offer(request); // Thread-safe non-blocking
+}
+
+// Consumer Logic
+Runnable consumerTask = () -> {
+    while (true) {
+        try {
+            Request req = queue.take(); // Blocks until an item is available
+            processRequest(req);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+};
+
+// Processing Logic
+void processRequest(Request request) {
+    String fileName = request.fileName();
+
+    // Step 1: Check file existence in cache or S3
+    boolean exists = fileExistenceCache.computeIfAbsent(fileName, fn -> checkS3FileExists(fn));
+    
+    // Step 2: Use Optional to handle logic if file exists
+    Optional<String> fileKeyOpt = exists ? Optional.of(fileName) : Optional.empty();
+
+    fileKeyOpt.ifPresentOrElse(
+        // If file exists
+        key -> {
+            InputStream s3Input = downloadFileFromS3(key);
+            Workbook workbook = loadWorkbook(s3Input);
+            updateWorkbook(workbook, request);
+            uploadWorkbookToS3(workbook, key);
+        },
+        // If file doesn’t exist
+        () -> {
+            Workbook workbook = createNewWorkbook(request);
+            uploadWorkbookToS3(workbook, fileName);
+            fileExistenceCache.put(fileName, true); // update cache
+        }
+    );
+}
+
+boolean checkS3FileExists(String fileName) {
+    // Use AWS S3 SDK to check if file exists
+    return s3Client.doesObjectExist(bucketName, fileName);
+}
+
+InputStream downloadFileFromS3(String key) {
+    // Download file as stream
+}
+
+Workbook loadWorkbook(InputStream in) {
+    return new XSSFWorkbook(in); // Apache POI
+}
+
+void updateWorkbook(Workbook wb, Request request) {
+    Sheet sheet = wb.getSheetAt(0);
+    Row row = sheet.getRow(0);
+    if (row == null) row = sheet.createRow(0);
+    Cell cell1 = row.createCell(0);
+    cell1.setCellValue(request.name());
+
+    Cell cell2 = row.createCell(1);
+    cell2.setCellValue(request.status());
+}
+
+Workbook createNewWorkbook(Request request) {
+    Workbook wb = new XSSFWorkbook();
+    Sheet sheet = wb.createSheet("Data");
+    Row row = sheet.createRow(0);
+    row.createCell(0).setCellValue(request.name());
+    row.createCell(1).setCellValue(request.status());
+    return wb;
+}
+
+void uploadWorkbookToS3(Workbook wb, String key) {
+    // Convert workbook to stream and upload via S3 client
+}
+
+// Start thread pool
+ExecutorService pool = Executors.newFixedThreadPool(10);
+IntStream.range(0, 10).forEach(i -> pool.submit(consumerTask));
