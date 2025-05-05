@@ -1,3 +1,104 @@
+@Service
+public class ExcelProcessorService {
+
+    private final BlockingQueue<ExcelUpdateRequest> queue = new LinkedBlockingQueue<>();
+    private final ConcurrentMap<String, Boolean> fileExistenceCache = new ConcurrentHashMap<>();
+    private final ExecutorService executor = Executors.newFixedThreadPool(10);
+
+    @PostConstruct
+    public void initWorkers() {
+        for (int i = 0; i < 10; i++) {
+            executor.submit(this::worker);
+        }
+    }
+
+    public void enqueueRequest(ExcelUpdateRequest request) {
+        queue.offer(request);
+    }
+
+    private void worker() {
+        while (true) {
+            try {
+                ExcelUpdateRequest req = queue.take();
+                process(req);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    private void process(ExcelUpdateRequest request) {
+        String fileName = request.fileName();
+        boolean exists = fileExistenceCache.computeIfAbsent(fileName, this::checkIfExistsInS3);
+
+        Optional<String> fileKeyOpt = exists ? Optional.of(fileName) : Optional.empty();
+
+        fileKeyOpt.ifPresentOrElse(
+            key -> {
+                try (InputStream in = downloadFileFromS3(key)) {
+                    Workbook workbook = new XSSFWorkbook(in);
+                    updateWorkbook(workbook, request);
+                    uploadToS3(workbook, key);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            },
+            () -> {
+                try {
+                    Workbook workbook = createWorkbook(request);
+                    uploadToS3(workbook, fileName);
+                    fileExistenceCache.put(fileName, true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        );
+    }
+
+    private boolean checkIfExistsInS3(String fileName) {
+        // TODO: Add actual AWS S3 existence check logic
+        return false;
+    }
+
+    private InputStream downloadFileFromS3(String key) {
+        // TODO: Implement S3 download logic
+        return new ByteArrayInputStream(new byte[0]);
+    }
+
+    private void uploadToS3(Workbook wb, String key) {
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            wb.write(bos);
+            // TODO: Upload bos.toByteArray() to S3
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateWorkbook(Workbook wb, ExcelUpdateRequest request) {
+        Sheet sheet = wb.getSheetAt(0);
+        if (sheet == null) sheet = wb.createSheet("Data");
+
+        Row row = sheet.getRow(0);
+        if (row == null) row = sheet.createRow(0);
+
+        row.createCell(0).setCellValue(request.name());
+        row.createCell(1).setCellValue(request.status());
+    }
+
+    private Workbook createWorkbook(ExcelUpdateRequest request) {
+        Workbook wb = new XSSFWorkbook();
+        Sheet sheet = wb.createSheet("Data");
+        Row row = sheet.createRow(0);
+        row.createCell(0).setCellValue(request.name());
+        row.createCell(1).setCellValue(request.status());
+        return wb;
+    }
+}
+
+
+----------1---------1-------1-------
+
+
 // Request Model
 record Request(String fileName, String name, String status) {}
 
