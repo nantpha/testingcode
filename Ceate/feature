@@ -1,4 +1,40 @@
+@Component
+public class FileWriteDispatcher {
 
+    private static final String BASE_DIR = "/your/output/path";
+    private final ExecutorService writerPool;
+
+    public FileWriteDispatcher() {
+        // Tune pool size and queue capacity as needed
+        this.writerPool = new ThreadPoolExecutor(
+                10,                      // core threads
+                20,                      // max threads
+                60, TimeUnit.SECONDS,   // idle timeout
+                new LinkedBlockingQueue<>(1000), // request queue
+                new ThreadPoolExecutor.CallerRunsPolicy() // fallback if queue is full
+        );
+    }
+
+    public void dispatchWrite(String filename, String content) {
+        writerPool.submit(() -> {
+            try {
+                String dateFolder = LocalDate.now().toString(); // e.g. 2025-05-07
+                Path folderPath = Paths.get(BASE_DIR, dateFolder);
+                Files.createDirectories(folderPath);
+
+                // Create unique file per request using timestamp or UUID
+                String uniqueFileName = filename + "_" + System.currentTimeMillis() + ".txt";
+                Path filePath = folderPath.resolve(uniqueFileName);
+
+                Files.write(filePath, content.getBytes(), StandardOpenOption.CREATE_NEW);
+            } catch (IOException e) {
+                e.printStackTrace(); // Replace with proper logging
+            }
+        });
+    }
+}
+
+-----------------------
 @Component
 public class FileWriteDispatcher {
 
