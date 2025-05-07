@@ -1,3 +1,33 @@
+
+@Component
+public class FileWriteDispatcher {
+
+    private final ExecutorService writerPool;
+    private final String BASE_DIR = "/your/output/path";
+
+    public FileWriteDispatcher() {
+        this.writerPool = Executors.newFixedThreadPool(10); // Tune pool size as needed
+    }
+
+    public void dispatchWrite(String filename, String content) {
+        writerPool.submit(() -> {
+            try {
+                String dateFolder = LocalDate.now().toString();
+                Path folderPath = Paths.get(BASE_DIR, dateFolder);
+                Files.createDirectories(folderPath);
+
+                Path filePath = folderPath.resolve(filename + ".txt");
+
+                Files.write(filePath, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            } catch (IOException e) {
+                e.printStackTrace(); // Or log error
+            }
+        });
+    }
+}
+
+-----------
+
 @Configuration
 @EnableAsync
 public class AsyncConfig {
