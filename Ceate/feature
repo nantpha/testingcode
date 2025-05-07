@@ -1,0 +1,38 @@
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+
+    @Bean("fileWriterExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);       // Tune as per your load
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(1000);
+        executor.setThreadNamePrefix("FileWriter-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+@Service
+public class FileWriterService {
+
+    private static final String BASE_DIR = "/your/base/output/path";
+
+    @Async("fileWriterExecutor")
+    public void writeToFile(String filename, String content) {
+        try {
+            String dateFolder = LocalDate.now().toString(); // e.g., 2025-05-07
+            Path folderPath = Paths.get(BASE_DIR, dateFolder);
+            Files.createDirectories(folderPath);
+
+            Path filePath = folderPath.resolve(filename + ".txt");
+
+            Files.write(filePath, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            // You may log or handle exceptions based on your requirement
+            e.printStackTrace();
+        }
+    }
+}
+
