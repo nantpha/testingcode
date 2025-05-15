@@ -1,0 +1,45 @@
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
+
+import java.util.List;
+
+public class S3DeleteFiles {
+
+    public static void main(String[] args) {
+        String bucketName = "your-bucket-name";
+        String keyword = "jjj";
+
+        try (S3Client s3 = S3Client.builder()
+                .region(Region.US_EAST_1) // Change to your region
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build()) {
+
+            ListObjectsV2Request listReq = ListObjectsV2Request.builder()
+                    .bucket(bucketName)
+                    .build();
+
+            ListObjectsV2Response listRes;
+            do {
+                listRes = s3.listObjectsV2(listReq);
+
+                for (S3Object obj : listRes.contents()) {
+                    if (obj.key().contains(keyword)) {
+                        System.out.println("Deleting: " + obj.key());
+                        s3.deleteObject(DeleteObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(obj.key())
+                                .build());
+                    }
+                }
+
+                listReq = listReq.toBuilder().continuationToken(listRes.nextContinuationToken()).build();
+
+            } while (listRes.isTruncated());
+
+        } catch (S3Exception e) {
+            System.err.println("Error: " + e.awsErrorDetails().errorMessage());
+        }
+    }
+}
