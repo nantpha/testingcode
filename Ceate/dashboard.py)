@@ -1,0 +1,18 @@
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import plotly.express as px
+from prometheus_client import fetch_memory_usage
+
+df = fetch_memory_usage("http://localhost:9090", "jvm_memory_used_bytes")
+
+app = dash.Dash(__name__)
+fig = px.line(df, x=df.index, y="value", title="Java Memory Usage Over Time")
+
+app.layout = html.Div(children=[
+    html.H1(children='Java Memory Dashboard'),
+    dcc.Graph(figure=fig)
+])
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
