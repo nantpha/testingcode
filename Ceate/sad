@@ -1,0 +1,47 @@
+🛠️ Tools/Tech Stack
+Python
+
+TensorFlow/Keras
+
+Prometheus HTTP API
+
+Pandas / NumPy / Matplotlib
+
+
+
+
+* 
+prometheus-java-monitor/
+│
+├── prometheus_client.py   # Fetch metrics
+├── preprocess.py          # Parse & prepare time-series data
+├── model.py               # Define/train LSTM model
+├── summarize.py           # Analyze peaks and lows
+├── schedule_train.py      # Scheduler for retraining
+├── app.py                 # (Optional) REST API
+└── config.yaml            # Configurable Prometheus endpoint & metric names
+
+
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+import numpy as np
+
+def create_model(input_shape):
+    model = Sequential([
+        LSTM(64, input_shape=input_shape),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    return model
+
+# X, y = sliding_window(preprocessed_data)
+# model.fit(X, y, epochs=10, batch_size=32)
+
+
+
+def analyze_memory(data):
+    peak = data[data['memory'] > data['memory'].quantile(0.95)]
+    low = data[data['memory'] < data['memory'].quantile(0.05)]
+    return peak, low
+
