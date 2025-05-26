@@ -1,3 +1,36 @@
+
+import openai
+
+openai.api_key = "your-api-key"
+
+input1 = """Paste your long article or detailed text here."""
+input2 = """Paste your short summary or statement here."""
+
+prompt = f"""
+You will be given two inputs:
+
+Input 1: {input1}
+
+Input 2: {input2}
+
+Task:
+1. Summarize Input 1 briefly in your own words.
+2. Compare the summary of Input 1 with Input 2.
+3. State whether Input 2 accurately reflects the main idea or key points of Input 1.
+4. Justify your answer with a brief explanation.
+"""
+
+response = openai.ChatCompletion.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": prompt}],
+    temperature=0.3
+)
+
+print(response["choices"][0]["message"]["content"])
+
+
+
+
 Summarize Input 1 briefly in your own words.
 	2.	Compare the summary of Input 1 with Input 2.
 	3.	State whether Input 2 accurately reflects the main idea or key points of Input 1.
