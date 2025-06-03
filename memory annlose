@@ -1,0 +1,98 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, LSTM, RepeatVector
+from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
+
+
+
+def generate_synthetic_jvm_data(app_key, start_time, minutes=1440):
+    timestamps = [start_time + timedelta(minutes=i) for i in range(minutes)]
+    heap_used = np.random.normal(400, 30, size=minutes)
+    non_heap_used = np.random.normal(100, 10, size=minutes)
+    gc_time = np.random.normal(50, 5, size=minutes)
+
+    # Inject anomaly
+    anomaly_start = np.random.randint(1000, 1200)
+    heap_used[anomaly_start:anomaly_start+20] += np.random.normal(200, 50, size=20)
+    gc_time[anomaly_start:anomaly_start+20] += np.random.normal(30, 10, size=20)
+
+    return pd.DataFrame({
+        'timestamp': timestamps,
+        'app_key': app_key,
+        'heap_used': heap_used,
+        'heap_committed': 800,
+        'non_heap_used': non_heap_used,
+        'gc_time': gc_time
+    })
+
+start_time = datetime.strptime("2025-06-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+data = pd.concat([
+    generate_synthetic_jvm_data("app-01", start_time),
+    generate_synthetic_jvm_data("app-02", start_time),
+    generate_synthetic_jvm_data("app-03", start_time)
+])
+
+data.reset_index(drop=True, inplace=True)
+data.head()
+
+
+
+app_data = data[data['app_key'] == 'app-01'].copy()
+features = ['heap_used', 'non_heap_used', 'gc_time']
+scaler = MinMaxScaler()
+scaled = scaler.fit_transform(app_data[features])
+
+def create_sequences(data, seq_len=20):
+    X = []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+    return np.array(X)
+
+sequence_data = create_sequences(scaled)
+sequence_data.shape
+
+
+input_dim = sequence_data.shape[2]
+timesteps = sequence_data.shape[1]
+
+inputs = Input(shape=(timesteps, input_dim))
+encoded = LSTM(64, activation="relu", return_sequences=False)(inputs)
+decoded = RepeatVector(timesteps)(encoded)
+decoded = LSTM(64, activation="relu", return_sequences=True)(decoded)
+
+autoencoder = Model(inputs, decoded)
+autoencoder.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+
+history = autoencoder.fit(sequence_data, sequence_data, 
+                          epochs=10, batch_size=32, 
+                          validation_split=0.1,
+                          verbose=1)
+
+
+
+
+reconstructed = autoencoder.predict(sequence_data)
+mse = np.mean(np.square(sequence_data - reconstructed), axis=(1, 2))
+
+threshold = np.percentile(mse, 95)
+anomalies = mse > threshold
+
+plt.figure(figsize=(12, 4))
+plt.plot(mse, label="Reconstruction Error")
+plt.axhline(threshold, color='red', linestyle='--', label='Anomaly Threshold')
+plt.title("Anomaly Detection on JVM Metrics (app-01)")
+plt.xlabel("Time Step")
+plt.ylabel("MSE")
+plt.legend()
+plt.show()
+
+
+
+
+
