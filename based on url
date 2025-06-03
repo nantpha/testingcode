@@ -1,0 +1,441 @@
+import pandas as pd
+import numpy as np
+import requests
+import time
+import json
+from datetime import datetime, timedelta
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, LSTM, RepeatVector
+from tensorflow.keras.optimizers import Adam
+import matplotlib.pyplot as plt
+
+
+
+# Define application configuration
+apps_config = [
+    {
+        "app_key": "app-01",
+        "url": "http://localhost:8081/actuator/metrics/jvm.memory.used"
+    },
+    {
+        "app_key": "app-02",
+        "url": "http://localhost:8082/actuator/metrics/jvm.memory.used"
+    }
+]
+def collect_metrics(app_key, url):
+    try:
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        value = data['measurements'][0]['value']  # Adjust this as needed
+        return {
+            "timestamp": datetime.utcnow(),
+            "app_key": app_key,
+            "heap_used": value
+        }
+    except Exception as e:
+        print(f"Error for {app_key}: {e}")
+        return None
+
+# Simulate data collection loop
+all_metrics = []
+for _ in range(10):  # 10 cycles for demo; use more in real use
+    for app in apps_config:
+        record = collect_metrics(app["app_key"], app["url"])
+        if record:
+            all_metrics.append(record)
+    time.sleep(1)  # For real systems use: time.sleep(60)
+
+df = pd.DataFrame(all_metrics)
+df.to_csv("metrics_collected.csv", index=False)
+df.head()
+
+def create_sequences(data, seq_len=20):
+    X = []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+    return np.array(X)
+
+def train_model_for_app(df, app_key):
+    app_data = df[df['app_key'] == app_key].sort_values('timestamp')
+    features = ['heap_used']
+    scaler = MinMaxScaler()
+    scaled = scaler.fit_transform(app_data[features])
+
+    X = create_sequences(scaled)
+
+    inputs = Input(shape=(X.shape[1], X.shape[2]))
+    encoded = LSTM(64, activation="relu", return_sequences=False)(inputs)
+    decoded = RepeatVector(X.shape[1])(encoded)
+    decoded = LSTM(64, activation="relu", return_sequences=True)(decoded)
+
+    model = Model(inputs, decoded)
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+    model.fit(X, X, epochs=5, batch_size=16, verbose=1)
+
+    return model, scaler
+
+# Train models
+models = {}
+for app in df['app_key'].unique():
+    print(f"Training model for {app}")
+    model, scaler = train_model_for_app(df, app)
+    models[app] = (model, scaler)
+
+
+
+for app in df['app_key'].unique():
+    print(f"Detecting anomalies for {app}")
+    model, scaler = models[app]
+    app_data = df[df['app_key'] == app].sort_values('timestamp')
+    scaled = scaler.transform(app_data[['heap_used']])
+    X = create_sequences(scaled)
+    recon = model.predict(X)
+    mse = np.mean(np.power(X - recon, 2), axis=(1,2))
+    threshold = np.percentile(mse, 95)
+    anomalies = mse > threshold
+
+    # Plot
+    plt.figure(figsize=(12, 4))
+    plt.plot(mse, label=f"Reconstruction Error ({app})")
+    plt.axhline(threshold, color='red', linestyle='--', label='Threshold')
+    plt.title(f"Anomaly Detection for {app}")
+    plt.xlabel("Time Step")
+    plt.ylabel("MSE")
+    plt.legend()
+    plt.show()
+
+
+
+
+-----/
+
+# save this as app.py and run: streamlit run app.py
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import requests
+import time
+from datetime import datetime
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import Input, LSTM, RepeatVector
+from tensorflow.keras.optimizers import Adam
+import matplotlib.pyplot as plt
+
+st.title("Multi-App Health Monitoring Dashboard")
+
+# Config: your apps here
+apps_config = [
+    {"app_key": "app-01", "url": "http://localhost:8081/actuator/metrics/jvm.memory.used"},
+    {"app_key": "app-02", "url": "http://localhost:8082/actuator/metrics/jvm.memory.used"}
+]
+
+# Utils
+def collect_metrics(app_key, url):
+    try:
+        response = requests.get(url, timeout=3)
+        data = response.json()
+        value = data['measurements'][0]['value']  # Adjust based on your actual JSON
+        return {"timestamp": datetime.utcnow(), "app_key": app_key, "heap_used": value}
+    except Exception as e:
+        st.warning(f"Failed to get metrics for {app_key}: {e}")
+        return None
+
+def create_sequences(data, seq_len=20):
+    X = []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+    return np.array(X)
+
+def build_model(input_shape):
+    inputs = Input(shape=input_shape)
+    encoded = LSTM(64, activation="relu", return_sequences=False)(inputs)
+    decoded = RepeatVector(input_shape[0])(encoded)
+    decoded = LSTM(64, activation="relu", return_sequences=True)(decoded)
+    model = Model(inputs, decoded)
+    model.compile(optimizer=Adam(0.001), loss='mse')
+    return model
+
+# Store collected data in session state
+if "data" not in st.session_state:
+    st.session_state["data"] = []
+
+# Collect data button
+if st.button("Collect Latest Metrics"):
+    for app in apps_config:
+        record = collect_metrics(app["app_key"], app["url"])
+        if record:
+            st.session_state["data"].append(record)
+    st.success(f"Collected data points: {len(st.session_state['data'])}")
+
+if len(st.session_state["data"]) < 40:
+    st.info("Collect at least 40 data points before training.")
+    st.stop()
+
+df = pd.DataFrame(st.session_state["data"])
+st.write("### Raw Metrics Data", df.tail(10))
+
+models = {}
+scalers = {}
+
+# Train models per app
+for app_key in df['app_key'].unique():
+    app_data = df[df['app_key'] == app_key].sort_values('timestamp')
+    features = ['heap_used']
+    scaler = MinMaxScaler()
+    scaled = scaler.fit_transform(app_data[features])
+
+    X = create_sequences(scaled)
+    if len(X) == 0:
+        st.warning(f"Not enough sequences for {app_key} to train")
+        continue
+    
+    model = build_model((X.shape[1], X.shape[2]))
+    with st.spinner(f"Training model for {app_key}..."):
+        model.fit(X, X, epochs=5, batch_size=16, verbose=0)
+    models[app_key] = model
+    scalers[app_key] = scaler
+
+# Anomaly detection & visualization
+for app_key, model in models.items():
+    st.write(f"### Anomaly Detection for {app_key}")
+    app_data = df[df['app_key'] == app_key].sort_values('timestamp')
+    scaled = scalers[app_key].transform(app_data[['heap_used']])
+    X = create_sequences(scaled)
+    if len(X) == 0:
+        st.warning(f"Not enough data for anomaly detection for {app_key}")
+        continue
+
+    recon = model.predict(X)
+    mse = np.mean(np.power(X - recon, 2), axis=(1,2))
+    threshold = np.percentile(mse, 95)
+    anomalies = mse > threshold
+
+    fig, ax = plt.subplots()
+    ax.plot(mse, label="Reconstruction Error")
+    ax.axhline(threshold, color='red', linestyle='--', label="Threshold")
+    ax.legend()
+    st.pyplot(fig)
+
+    anomaly_times = app_data['timestamp'].iloc[20:][anomalies]
+    if len(anomaly_times) > 0:
+        st.error(f"Anomalies detected at times:\n{anomaly_times.to_list()}")
+    else:
+        st.success("No anomalies detected")
+
+# Auto-refresh every 60 seconds (optional)
+st.experimental_rerun()
+
+
+pip install streamlit tensorflow scikit-learn matplotlib requests pandas
+streamlit run app.py
+
+
+--// store 
+import streamlit as st
+import pandas as pd
+import numpy as np
+import requests
+import time
+import threading
+from datetime import datetime
+import sqlite3
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, LSTM, RepeatVector
+from tensorflow.keras.optimizers import Adam
+import matplotlib.pyplot as plt
+
+# --- Config ---
+apps_config = [
+    {"app_key": "app-01", "url": "http://localhost:8081/actuator/metrics/jvm.memory.used"},
+    {"app_key": "app-02", "url": "http://localhost:8082/actuator/metrics/jvm.memory.used"}
+]
+
+DB_PATH = "metrics.db"
+SCRAPE_INTERVAL = 60  # seconds
+
+# --- Database functions ---
+def init_db():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_key TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            heap_used REAL NOT NULL
+        )
+    """)
+    conn.commit()
+    return conn
+
+def insert_metric(conn, app_key, timestamp, heap_used):
+    c = conn.cursor()
+    c.execute("INSERT INTO metrics (app_key, timestamp, heap_used) VALUES (?, ?, ?)",
+              (app_key, timestamp, heap_used))
+    conn.commit()
+
+def fetch_all_metrics(conn):
+    df = pd.read_sql_query("SELECT * FROM metrics ORDER BY timestamp", conn)
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    return df
+
+# --- Metric collection ---
+def collect_metrics(app_key, url):
+    try:
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        value = data['measurements'][0]['value']  # Adjust if needed
+        return value
+    except Exception as e:
+        print(f"[{datetime.utcnow()}] Error collecting metrics for {app_key}: {e}")
+        return None
+
+def scraping_loop(conn, stop_event):
+    while not stop_event.is_set():
+        for app in apps_config:
+            val = collect_metrics(app["app_key"], app["url"])
+            if val is not None:
+                insert_metric(conn, app["app_key"], datetime.utcnow().isoformat(), val)
+        time.sleep(SCRAPE_INTERVAL)
+
+# --- Model training and anomaly detection ---
+def create_sequences(data, seq_len=20):
+    X = []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+    return np.array(X)
+
+def build_model(input_shape):
+    inputs = Input(shape=input_shape)
+    encoded = LSTM(64, activation="relu", return_sequences=False)(inputs)
+    decoded = RepeatVector(input_shape[0])(encoded)
+    decoded = LSTM(64, activation="relu", return_sequences=True)(decoded)
+    model = Model(inputs, decoded)
+    model.compile(optimizer=Adam(0.001), loss='mse')
+    return model
+
+def train_and_detect(df):
+    results = {}
+    for app_key in df['app_key'].unique():
+        app_data = df[df['app_key'] == app_key].sort_values('timestamp')
+        features = ['heap_used']
+        scaler = MinMaxScaler()
+        scaled = scaler.fit_transform(app_data[features])
+
+        X = create_sequences(scaled)
+        if len(X) == 0:
+            results[app_key] = None
+            continue
+
+        model = build_model((X.shape[1], X.shape[2]))
+        model.fit(X, X, epochs=5, batch_size=16, verbose=0)
+
+        recon = model.predict(X)
+        mse = np.mean(np.power(X - recon, 2), axis=(1,2))
+        threshold = np.percentile(mse, 95)
+        anomalies = mse > threshold
+
+        results[app_key] = {
+            "timestamps": app_data['timestamp'].iloc[20:].values,
+            "mse": mse,
+            "threshold": threshold,
+            "anomalies": anomalies
+        }
+    return results
+
+# --- Streamlit App ---
+st.title("Multi-App Health Monitoring with Background Scraping")
+
+# Initialize DB connection and create tables
+conn = init_db()
+
+# Start background scraping thread (only once)
+if 'scrape_thread' not in st.session_state:
+    st.session_state.stop_event = threading.Event()
+    st.session_state.scrape_thread = threading.Thread(target=scraping_loop, args=(conn, st.session_state.stop_event), daemon=True)
+    st.session_state.scrape_thread.start()
+
+# Button to stop scraping (optional)
+if st.button("Stop Background Scraping"):
+    st.session_state.stop_event.set()
+    st.success("Background scraping stopped")
+
+df = fetch_all_metrics(conn)
+st.write(f"### Collected Metrics ({len(df)} records)")
+st.dataframe(df.tail(20))
+
+if len(df) < 40:
+    st.info("Waiting to collect at least 40 records for training...")
+    st.stop()
+
+# Train models and detect anomalies
+with st.spinner("Training models and detecting anomalies..."):
+    results = train_and_detect(df)
+
+# Display anomaly plots per app
+for app_key, result in results.items():
+    if result is None:
+        st.warning(f"Not enough data for {app_key} to train model.")
+        continue
+
+    st.subheader(f"Anomaly Detection for {app_key}")
+    fig, ax = plt.subplots(figsize=(12,4))
+    ax.plot(result["timestamps"], result["mse"], label="Reconstruction Error")
+    ax.axhline(result["threshold"], color='red', linestyle='--', label="Threshold")
+    ax.legend()
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
+
+    anomaly_times = result["timestamps"][result["anomalies"]]
+    if len(anomaly_times) > 0:
+        st.error(f"Anomalies detected at:\n{list(anomaly_times)}")
+    else:
+        st.success("No anomalies detected")
+
+# Clean-up code (optional)
+def on_stop():
+    if 'stop_event' in st.session_state:
+        st.session_state.stop_event.set()
+if st.button("Stop App and Exit"):
+    on_stop()
+    st.stop()
+
+
+
+
+---
+apps_config = [
+    {
+        "app_key": "app-01",
+        "metrics": {
+            "heap_used": "http://localhost:8081/actuator/metrics/jvm.memory.used",
+            "cpu_usage": "http://localhost:8081/actuator/metrics/system.cpu.usage",
+            "gc_pause": "http://localhost:8081/actuator/metrics/jvm.gc.pause"
+        }
+    },
+    {
+        "app_key": "app-02",
+        "metrics": {
+            "heap_used": "http://localhost:8082/actuator/metrics/jvm.memory.used",
+            "cpu_usage": "http://localhost:8082/actuator/metrics/system.cpu.usage",
+            "gc_pause": "http://localhost:8082/actuator/metrics/jvm.gc.pause"
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
