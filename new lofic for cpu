@@ -1,0 +1,217 @@
+# Cell 1: Imports & Config
+import sqlite3
+import threading
+import time
+from datetime import datetime
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import requests
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.layers import Input, LSTM, RepeatVector
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.optimizers import Adam
+
+# === CONFIG ===
+apps_config = [
+    {
+        "app_key": "app-01",
+        "metrics": {
+            "heap_used": "http://localhost:8081/actuator/metrics/jvm.memory.used",
+            "cpu_usage": "http://localhost:8081/actuator/metrics/system.cpu.usage",
+            "gc_pause": "http://localhost:8081/actuator/metrics/jvm.gc.pause"
+        }
+    },
+    {
+        "app_key": "app-02",
+        "metrics": {
+            "heap_used": "http://localhost:8082/actuator/metrics/jvm.memory.used",
+            "cpu_usage": "http://localhost:8082/actuator/metrics/system.cpu.usage",
+            "gc_pause": "http://localhost:8082/actuator/metrics/jvm.gc.pause"
+        }
+    }
+]
+
+DB_PATH = "metrics.db"
+SCRAPE_INTERVAL = 60  # seconds
+MODEL_DIR = "saved_models"
+import os
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+# Helper to print with timestamp
+def log(msg):
+    print(f"[{datetime.utcnow()}] {msg}")
+
+
+# Cell 2: Database setup and helpers
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_key TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            heap_used REAL,
+            cpu_usage REAL,
+            gc_pause REAL
+        )
+    """)
+    conn.commit()
+    return conn
+
+def insert_metric(conn, data):
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO metrics (app_key, timestamp, heap_used, cpu_usage, gc_pause)
+        VALUES (?, ?, ?, ?, ?)
+    """, (data['app_key'], data['timestamp'], data.get('heap_used'), data.get('cpu_usage'), data.get('gc_pause')))
+    conn.commit()
+
+def fetch_all_metrics(conn):
+    df = pd.read_sql_query("SELECT * FROM metrics ORDER BY timestamp", conn)
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    return df
+
+
+
+# Cell 3: Metric collection & scraping thread
+
+def collect_metrics(app_key, metrics_urls):
+    results = {"app_key": app_key, "timestamp": datetime.utcnow().isoformat()}
+    for metric_name, url in metrics_urls.items():
+        try:
+            response = requests.get(url, timeout=5)
+            data = response.json()
+            value = data['measurements'][0]['value']
+            results[metric_name] = value
+        except Exception as e:
+            log(f"Error collecting {metric_name} for {app_key}: {e}")
+            results[metric_name] = None
+    return results
+
+def scraping_loop(conn, stop_event):
+    while not stop_event.is_set():
+        for app in apps_config:
+            data = collect_metrics(app["app_key"], app["metrics"])
+            if data:
+                insert_metric(conn, data)
+                log(f"Inserted data for {app['app_key']}")
+        time.sleep(SCRAPE_INTERVAL)
+
+# To start scraping in background:
+# stop_event = threading.Event()
+# scraping_thread = threading.Thread(target=scraping_loop, args=(conn, stop_event), daemon=True)
+# scraping_thread.start()
+
+
+# Cell 4: Sequence preparation and model
+
+def create_sequences(data, seq_len=20):
+    X = []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+    return np.array(X)
+
+def build_model(input_shape):
+    inputs = Input(shape=input_shape)
+    encoded = LSTM(64, activation="relu", return_sequences=False)(inputs)
+    decoded = RepeatVector(input_shape[0])(encoded)
+    decoded = LSTM(64, activation="relu", return_sequences=True)(decoded)
+    model = Model(inputs, decoded)
+    model.compile(optimizer=Adam(0.001), loss='mse')
+    return model
+
+# Cell 5: Training and anomaly detection
+
+def train_and_detect_multivariate(df):
+    results = {}
+    for app_key in df['app_key'].unique():
+        app_data = df[df['app_key'] == app_key].sort_values('timestamp')
+        features = ['heap_used', 'cpu_usage', 'gc_pause']
+        app_data_features = app_data[features].fillna(method='ffill').fillna(method='bfill')
+        scaler = MinMaxScaler()
+        scaled = scaler.fit_transform(app_data_features)
+
+        X = create_sequences(scaled)
+        if len(X) == 0:
+            results[app_key] = None
+            continue
+
+        model = build_model((X.shape[1], X.shape[2]))
+        model.fit(X, X, epochs=5, batch_size=16, verbose=0)
+
+        recon = model.predict(X)
+        mse = np.mean(np.power(X - recon, 2), axis=(1,2))
+        threshold = np.percentile(mse, 95)
+        anomalies = mse > threshold
+
+        # Save model for reuse
+        model.save(f"{MODEL_DIR}/{app_key}_model.h5")
+
+        results[app_key] = {
+            "timestamps": app_data['timestamp'].iloc[20:].values,
+            "mse": mse,
+            "threshold": threshold,
+            "anomalies": anomalies
+        }
+    return results
+
+# Cell 6: Visualization helper
+
+def plot_anomalies(result, app_key):
+    if result is None:
+        print(f"Not enough data to train model for {app_key}")
+        return
+
+    plt.figure(figsize=(12, 4))
+    plt.plot(result["timestamps"], result["mse"], label="Reconstruction Error")
+    plt.axhline(result["threshold"], color='red', linestyle='--', label="Threshold")
+    plt.title(f"Anomaly Detection for {app_key}")
+    plt.xlabel("Timestamp")
+    plt.ylabel("MSE")
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+    anomaly_times = result["timestamps"][result["anomalies"]]
+    if len(anomaly_times) > 0:
+        print(f"Anomalies detected at:\n{list(anomaly_times)}")
+    else:
+        print("No anomalies detected.")
+
+
+# Cell 7: Run the full workflow
+
+conn = init_db()
+
+# Start scraping thread (run this once)
+if 'stop_event' not in globals():
+    stop_event = threading.Event()
+    scraping_thread = threading.Thread(target=scraping_loop, args=(conn, stop_event), daemon=True)
+    scraping_thread.start()
+    log("Started background scraping thread.")
+
+# Let it run for some time (or you can wait/trigger manually)
+# time.sleep(180)  # Example: wait 3 minutes collecting data
+
+df = fetch_all_metrics(conn)
+log(f"Fetched {len(df)} records.")
+
+if len(df) < 40:
+    log("Waiting for more data collection before training.")
+else:
+    results = train_and_detect_multivariate(df)
+    for app_key, res in results.items():
+        plot_anomalies(res, app_key)
+
+
+
+
+
+
+
+
