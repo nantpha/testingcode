@@ -1,0 +1,159 @@
+file exist or not 
+
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+public class S3PrefixChecker {
+
+    public static boolean fileExistsWithPrefix(String bucketName, String prefix) {
+        S3Client s3 = S3Client.builder()
+                .region(Region.US_EAST_1) // choose your region
+                .credentialsProvider(ProfileCredentialsProvider.create())
+                .build();
+
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .maxKeys(1) // Optimize performance, only check if *any* match
+                .build();
+
+        ListObjectsV2Response result = s3.listObjectsV2(request);
+
+        return !result.contents().isEmpty();
+    }
+
+    public static void main(String[] args) {
+        String bucketName = "your-bucket-name";
+        String prefix = "your-prefix/"; // Can include path-like structure
+
+        if (fileExistsWithPrefix(bucketName, prefix)) {
+            System.out.println("File(s) with the prefix exist.");
+        } else {
+            System.out.println("No file found with that prefix.");
+        }
+    }
+}
+
+
+download 
+import org.springframework.stereotype.Service;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.core.sync.ResponseInputStream;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
+
+import java.io.InputStream;
+
+@Service
+public class S3Service {
+
+    private final S3Client s3Client;
+
+    public S3Service() {
+        this.s3Client = S3Client.builder()
+                .region(Region.US_EAST_1) // Change region as needed
+                .credentialsProvider(ProfileCredentialsProvider.create())
+                .build();
+    }
+
+    public S3Object findFirstObjectWithPrefix(String bucketName, String prefix) {
+        ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .maxKeys(1)
+                .build();
+
+        ListObjectsV2Response response = s3Client.listObjectsV2(listRequest);
+        return response.contents().isEmpty() ? null : response.contents().get(0);
+    }
+
+    public ResponseInputStream<GetObjectResponse> downloadObject(String bucketName, String key) {
+        GetObjectRequest getRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+        return s3Client.getObject(getRequest);
+    }
+}
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import software.amazon.awssdk.services.s3.model.S3Object;
+
+import java.io.InputStream;
+
+@RestController
+@RequestMapping("/api/s3")
+public class S3Controller {
+
+    @Autowired
+    private S3Service s3Service;
+
+    @GetMapping("/download")
+    public ResponseEntity<?> downloadFileWithPrefix(
+            @RequestParam String bucket,
+            @RequestParam String prefix
+    ) {
+        S3Object s3Object = s3Service.findFirstObjectWithPrefix(bucket, prefix);
+        if (s3Object == null) {
+            return ResponseEntity
+                    .status(404)
+                    .body("No file found with prefix: " + prefix);
+        }
+
+        InputStream inputStream = s3Service.downloadObject(bucket, s3Object.key());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + s3Object.key() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(new InputStreamResource(inputStream));
+    }
+}
+
+
+@GetMapping("/download-multiple")
+public ResponseEntity<StreamingResponseBody> downloadMultipleFiles(
+        @RequestParam String bucket,
+        @RequestParam String prefix,
+        @RequestParam String extension // e.g., ".json" or ".txt"
+) {
+    List<S3Object> allFiles = s3Service.listObjectsWithPrefix(bucket, prefix, 1000); // Get more, filter later
+
+    // Filter by extension (case-insensitive)
+    List<S3Object> filteredFiles = allFiles.stream()
+            .filter(obj -> obj.key().toLowerCase().endsWith(extension.toLowerCase()))
+            .limit(50) // Max 50 files
+            .toList();
+
+    if (filteredFiles.isEmpty()) {
+        return ResponseEntity.status(404).body(null);
+    }
+
+    StreamingResponseBody responseBody = outputStream -> {
+        try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
+            for (S3Object file : filteredFiles) {
+                try (var s3InputStream = s3Service.downloadObject(bucket, file.key())) {
+                    String fileName = file.key().substring(file.key().lastIndexOf("/") + 1);
+                    zipOut.putNextEntry(new ZipEntry(fileName));
+                    s3InputStream.transferTo(zipOut);
+                    zipOut.closeEntry();
+                }
+            }
+            zipOut.finish();
+        }
+    };
+
+    return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=filtered_files.zip")
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .body(responseBody);
+}
+
