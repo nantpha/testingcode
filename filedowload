@@ -1,0 +1,162 @@
+import java.io.*;
+import java.net.URI;
+import java.net.http.*;
+import java.nio.file.*;
+import java.util.List;
+
+public class ApiFileFetcher {
+
+```
+// ─── CONFIGURATION ────────────────────────────────────────────────────────
+private static final String BASE_URL   = "https://your-api.example.com/api/fetch/"; // TODO: replace
+private static final String JWT_TOKEN  = "your_jwt_token_here";                     // TODO: replace
+private static final String OUTPUT_DIR = "./output";                                 // TODO: replace with your local path
+
+// ─── LIST OF NAMES ────────────────────────────────────────────────────────
+private static final List<String> NAMES = List.of(
+        "name1",
+        "name2",
+        "name3"
+        // TODO: add your names here
+);
+
+// Buffer size for streaming (8KB chunks)
+private static final int BUFFER_SIZE = 8192;
+
+// ──────────────────────────────────────────────────────────────────────────
+
+public static void main(String[] args) {
+    // Create output directory if it doesn't exist
+    try {
+        Files.createDirectories(Path.of(OUTPUT_DIR));
+    } catch (IOException e) {
+        System.err.println("Failed to create output directory: " + e.getMessage());
+        return;
+    }
+
+    HttpClient client = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
+
+    int success = 0, failed = 0;
+
+    for (String name : NAMES) {
+        System.out.println("\n──────────────────────────────────────");
+        System.out.println("Processing: " + name);
+
+        try {
+            processName(client, name);
+            success++;
+        } catch (Exception e) {
+            System.err.println("  ✗ Error for [" + name + "]: " + e.getMessage());
+            failed++;
+        }
+    }
+
+    System.out.println("\n══════════════════════════════════════");
+    System.out.println("Done! Success: " + success + " | Failed: " + failed);
+    System.out.println("Output folder: " + Path.of(OUTPUT_DIR).toAbsolutePath());
+}
+
+private static void processName(HttpClient client, String name) throws Exception {
+    String url = BASE_URL + name;
+    System.out.println("  → GET " + url);
+
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + JWT_TOKEN)
+            .header("Accept", "*/*")
+            .GET()
+            .build();
+
+    // Use InputStream body handler to support streaming large files (e.g. 120MB WAV)
+    HttpResponse<InputStream> response = client.send(
+            request,
+            HttpResponse.BodyHandlers.ofInputStream()
+    );
+
+    int statusCode = response.statusCode();
+    System.out.println("  → HTTP Status: " + statusCode);
+
+    if (statusCode != 200) {
+        // Drain and close the stream on error
+        response.body().close();
+        throw new RuntimeException("Non-200 response: HTTP " + statusCode);
+    }
+
+    // Detect file type from Content-Type header
+    String contentType = response.headers()
+            .firstValue("Content-Type")
+            .orElse("")
+            .toLowerCase();
+
+    System.out.println("  → Content-Type: " + contentType);
+
+    String extension = resolveExtension(contentType, name);
+    if (extension == null) {
+        response.body().close();
+        throw new RuntimeException("Unknown Content-Type [" + contentType + "] and cannot infer extension from name.");
+    }
+
+    // Strip any existing extension from name before saving
+    String baseName = name.replaceAll("(?i)\\.(json|wav)$", "");
+    Path outputPath = Path.of(OUTPUT_DIR, baseName + extension);
+
+    // Stream response body directly to disk — avoids loading 120MB into memory
+    streamToFile(response.body(), outputPath);
+
+    long fileSizeMB = Files.size(outputPath) / (1024 * 1024);
+    System.out.println("  ✓ Saved: " + outputPath.toAbsolutePath() + " (" + fileSizeMB + " MB)");
+}
+
+/**
+ * Streams the InputStream directly to a file using buffered chunks.
+ * This avoids loading the entire file (e.g. 120MB WAV) into memory.
+ */
+private static void streamToFile(InputStream inputStream, Path outputPath) throws IOException {
+    try (InputStream in = new BufferedInputStream(inputStream, BUFFER_SIZE);
+         OutputStream out = new BufferedOutputStream(new FileOutputStream(outputPath.toFile()), BUFFER_SIZE)) {
+
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int bytesRead;
+        long totalBytes = 0;
+
+        while ((bytesRead = in.read(buffer)) != -1) {
+            out.write(buffer, 0, bytesRead);
+            totalBytes += bytesRead;
+
+            // Print progress every 10MB
+            if (totalBytes % (10 * 1024 * 1024) < BUFFER_SIZE) {
+                System.out.println("  ↓ Downloaded: " + (totalBytes / (1024 * 1024)) + " MB...");
+            }
+        }
+
+        out.flush();
+    }
+}
+
+/**
+ * Resolves the file extension from Content-Type header.
+ * Falls back to checking the name suffix if Content-Type is ambiguous.
+ */
+private static String resolveExtension(String contentType, String name) {
+    // Check Content-Type first
+    if (contentType.contains("application/json") || contentType.contains("text/json")) {
+        return ".json";
+    }
+    if (contentType.contains("audio/wav") || contentType.contains("audio/x-wav")
+            || contentType.contains("audio/wave") || contentType.contains("audio/vnd.wave")) {
+        return ".wav";
+    }
+
+    // Fallback: infer from name suffix
+    String lowerName = name.toLowerCase();
+    if (lowerName.endsWith(".json")) return ".json";
+    if (lowerName.endsWith(".wav"))  return ".wav";
+
+    // Unknown
+    return null;
+}
+```
+
+}
